@@ -16,7 +16,7 @@ class CatalogSeeder extends Seeder
     {
         $now = now();
 
-        // 1. Categories (Menu categories - HU-06, HU-08, BPMN 9)
+        //Categories
         $categories = [
             ['name' => 'Pollos', 'description' => 'Piezas individuales, medios pollos y pollos enteros (frito o asado)', 'is_active' => true],
             ['name' => 'Combos', 'description' => 'Combos individuales y familiares con complementos y bebidas', 'is_active' => true],
@@ -29,7 +29,7 @@ class CatalogSeeder extends Seeder
             DB::table('categories')->updateOrInsert(['name' => $cat['name']], array_merge($cat, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 2. Measurement Units (HU-09)
+        //Measurement Units
         $measurementUnits = [
             ['name' => 'Kilogramo', 'abbreviation' => 'kg'],
             ['name' => 'Gramo', 'abbreviation' => 'g'],
@@ -43,7 +43,7 @@ class CatalogSeeder extends Seeder
             DB::table('measurement_units')->updateOrInsert(['name' => $unit['name']], array_merge($unit, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 3. Table Statuses (HU-22: disponible, ocupada, mantenimiento, inactiva)
+        //Table Statuses
         $tableStatuses = [
             ['name' => 'disponible'],
             ['name' => 'ocupada'],
@@ -54,7 +54,7 @@ class CatalogSeeder extends Seeder
             DB::table('table_statuses')->updateOrInsert(['name' => $status['name']], array_merge($status, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 4. Order Types (HU-15)
+        //Order Types
         $orderTypes = [
             ['name' => 'en_mesa'],
             ['name' => 'para_llevar'],
@@ -63,7 +63,7 @@ class CatalogSeeder extends Seeder
             DB::table('order_types')->updateOrInsert(['name' => $type['name']], array_merge($type, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 5. Order Statuses (HU-15 to HU-18)
+        //Order Statuses
         $orderStatuses = [
             ['name' => 'pendiente'],
             ['name' => 'en_preparacion'],
@@ -75,7 +75,7 @@ class CatalogSeeder extends Seeder
             DB::table('order_statuses')->updateOrInsert(['name' => $status['name']], array_merge($status, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 6. Order Item Statuses (HU-17)
+        //Order Item Statuses
         $orderItemStatuses = [
             ['name' => 'pendiente'],
             ['name' => 'en_preparacion'],
@@ -87,7 +87,7 @@ class CatalogSeeder extends Seeder
             DB::table('order_item_statuses')->updateOrInsert(['name' => $status['name']], array_merge($status, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 7. Receipt Types (HU-19)
+        //Receipt Types
         $receiptTypes = [
             ['name' => 'ticket'],
             ['name' => 'factura'],
@@ -96,7 +96,7 @@ class CatalogSeeder extends Seeder
             DB::table('receipt_types')->updateOrInsert(['name' => $type['name']], array_merge($type, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 8. Payment Methods (HU-19)
+        //Payment Methods
         $paymentMethods = [
             ['name' => 'efectivo'],
             ['name' => 'tarjeta'],
@@ -107,7 +107,7 @@ class CatalogSeeder extends Seeder
             DB::table('payment_methods')->updateOrInsert(['name' => $method['name']], array_merge($method, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 9. Sale Statuses (HU-19)
+        //Sale Statuses
         $saleStatuses = [
             ['name' => 'completada'],
             ['name' => 'anulada'],
@@ -116,7 +116,7 @@ class CatalogSeeder extends Seeder
             DB::table('sale_statuses')->updateOrInsert(['name' => $status['name']], array_merge($status, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 10. Cash Movement Types (HU-20)
+        //Cash Movement Types
         $cashMovementTypes = [
             ['name' => 'ingreso'],
             ['name' => 'egreso'],
@@ -126,7 +126,7 @@ class CatalogSeeder extends Seeder
             DB::table('cash_movement_types')->updateOrInsert(['name' => $type['name']], array_merge($type, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 11. Cash Movement Categories (HU-20)
+        //Cash Movement Categories
         $cashMovementCategories = [
             ['name' => 'venta'],
             ['name' => 'pago_proveedor'],
@@ -140,7 +140,7 @@ class CatalogSeeder extends Seeder
             DB::table('cash_movement_categories')->updateOrInsert(['name' => $cat['name']], array_merge($cat, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 12. Delivery Days (HU-12)
+        //Delivery Days
         $deliveryDays = [
             ['name' => 'Lunes'],
             ['name' => 'Martes'],
@@ -154,7 +154,7 @@ class CatalogSeeder extends Seeder
             DB::table('delivery_days')->updateOrInsert(['name' => $day['name']], array_merge($day, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 13. Purchase Request Statuses (HU-13)
+        //Purchase Request Statuses
         $purchaseRequestStatuses = [
             ['name' => 'pendiente'],
             ['name' => 'aprobada'],
@@ -165,7 +165,7 @@ class CatalogSeeder extends Seeder
             DB::table('purchase_request_statuses')->updateOrInsert(['name' => $status['name']], array_merge($status, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 14. Purchase Order Statuses (HU-13)
+        //Purchase Order Statuses
         $purchaseOrderStatuses = [
             ['name' => 'solicitada'],
             ['name' => 'recibida_completa'],
@@ -176,7 +176,7 @@ class CatalogSeeder extends Seeder
             DB::table('purchase_order_statuses')->updateOrInsert(['name' => $status['name']], array_merge($status, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 15. Delivery Incident Types (HU-14)
+        //Delivery Incident Types
         $deliveryIncidentTypes = [
             ['name' => 'peso_incompleto'],
             ['name' => 'producto_danado'],
@@ -188,7 +188,7 @@ class CatalogSeeder extends Seeder
             DB::table('delivery_incident_types')->updateOrInsert(['name' => $type['name']], array_merge($type, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 16. Delivery Incident Statuses (HU-14)
+        //Delivery Incident Statuses
         $deliveryIncidentStatuses = [
             ['name' => 'reportada'],
             ['name' => 'en_correccion'],
@@ -198,7 +198,7 @@ class CatalogSeeder extends Seeder
             DB::table('delivery_incident_statuses')->updateOrInsert(['name' => $status['name']], array_merge($status, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 17. Inventory Movement Types (HU-10)
+        //Inventory Movement Types
         $inventoryMovementTypes = [
             ['name' => 'compra_entrada'],
             ['name' => 'consumo_venta'],
@@ -210,7 +210,7 @@ class CatalogSeeder extends Seeder
             DB::table('inventory_movement_types')->updateOrInsert(['name' => $type['name']], array_merge($type, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 18. Adjustment Status Types (HU-10)
+        //Adjustment Status Types
         $adjustmentStatusTypes = [
             ['name' => 'aprobado'],
             ['name' => 'pendiente_aprobacion'],
@@ -220,7 +220,7 @@ class CatalogSeeder extends Seeder
             DB::table('adjustment_status_types')->updateOrInsert(['name' => $type['name']], array_merge($type, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 19. Alert Origins (HU-11)
+        //Alert Origins
         $alertOrigins = [
             ['name' => 'manual'],
             ['name' => 'automatic'],
@@ -229,7 +229,7 @@ class CatalogSeeder extends Seeder
             DB::table('alert_origins')->updateOrInsert(['name' => $origin['name']], array_merge($origin, ['created_at' => $now, 'updated_at' => $now]));
         }
 
-        // 20. Alert Statuses (HU-11)
+        //Alert Statuses
         $alertStatuses = [
             ['name' => 'pending'],
             ['name' => 'attended'],
