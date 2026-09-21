@@ -6,12 +6,15 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PingController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ComplementController;
+use App\Http\Controllers\DailyMenuController;
 use App\Http\Controllers\DishController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', PingController::class);
+
+Route::get('/daily-menu', [DailyMenuController::class, 'index']);
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword']);
@@ -47,6 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/dishes/{dish}', [DishController::class, 'update']);
         Route::delete('/dishes/{dish}', [DishController::class, 'destroy']);
         Route::patch('/dishes/{dish}/status', [DishController::class, 'toggleStatus']);
+        Route::patch('/dishes/{dish}/daily-menu', [DailyMenuController::class, 'toggleDish']);
+
+        Route::put('/daily-menu', [DailyMenuController::class, 'updateBatch']);
 
         Route::post('/complements', [ComplementController::class, 'store']);
         Route::put('/complements/{complement}', [ComplementController::class, 'update']);

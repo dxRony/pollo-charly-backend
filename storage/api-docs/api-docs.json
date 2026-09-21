@@ -1277,6 +1277,255 @@
                 ]
             }
         },
+        "/api/daily-menu": {
+            "get": {
+                "tags": [
+                    "Menú del Día"
+                ],
+                "summary": "Consultar menú del día público (Landing Page)",
+                "description": "Endpoint público (sin autenticación) que provee la lista de platillos destacados en el Menú del Día para ser consumido por la landing page.",
+                "operationId": "getPublicDailyMenu",
+                "responses": {
+                    "200": {
+                        "description": "Listado de platillos activos del menú del día (retorna array vacío si no hay ninguno marcado).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/DishResource"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Menú del Día"
+                ],
+                "summary": "Publicar selección completa del menú del día",
+                "description": "Actualiza en lote los platillos destacados en el menú del día. Valida que todos los platillos seleccionados estén activos y cuenten con existencias suficientes de sus insumos.",
+                "operationId": "syncDailyMenuBatch",
+                "requestBody": {
+                    "description": "Lista de IDs de platillos a publicar",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncDailyMenuBatchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Menú del día actualizado y publicado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Menú del día actualizado y publicado exitosamente en la landing page."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DishResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Uno o más platillos no cuentan con stock suficiente o se encuentran inactivos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede publicar la selección porque uno o más platillos no cuentan con insumos suficientes en almacén."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dishes/{id}/daily-menu": {
+            "patch": {
+                "tags": [
+                    "Menú del Día"
+                ],
+                "summary": "Destacar o retirar un platillo del menú del día",
+                "description": "Destaca o retira un platillo específico en el menú del día. Si se intenta destacar (is_daily_menu = true), verifica automáticamente que haya existencias suficientes de todos los insumos de su receta en almacén.",
+                "operationId": "toggleDishDailyMenu",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del platillo",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Estado de inclusión en el menú del día",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToggleDailyMenuDishRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Platillo actualizado exitosamente en el menú del día.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo publicado exitosamente en el menú del día."
+                                        },
+                                        "dish": {
+                                            "$ref": "#/components/schemas/DishResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Insumos insuficientes en almacén o platillo inactivo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El platillo no cuenta con insumos suficientes en almacén para ser publicado en el menú del día."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Platillo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/dishes": {
             "get": {
                 "tags": [
@@ -2965,6 +3214,49 @@
                     ]
                 }
             },
+            "SyncDailyMenuBatchRequest": {
+                "title": "Sync Daily Menu Batch Request",
+                "description": "Lista de IDs de platillos que conformarán la selección destacada en el menú del día de la landing page",
+                "required": [
+                    "dish_ids"
+                ],
+                "properties": {
+                    "dish_ids": {
+                        "description": "Arreglo de identificadores de platillos a publicar como menú del día (un arreglo vacío retirará todos los platillos)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "dish_ids": [
+                        1,
+                        2,
+                        4
+                    ]
+                }
+            },
+            "ToggleDailyMenuDishRequest": {
+                "title": "Toggle Daily Menu Dish Request",
+                "description": "Datos para incluir o retirar un platillo específico del menú del día",
+                "required": [
+                    "is_daily_menu"
+                ],
+                "properties": {
+                    "is_daily_menu": {
+                        "description": "Indica si se destaca o no el platillo en el menú del día",
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "is_daily_menu": true
+                }
+            },
             "CreateDishRecipeItemInput": {
                 "title": "Create Dish Recipe Item Input",
                 "required": [
@@ -3564,6 +3856,10 @@
         {
             "name": "Gestión de Menú",
             "description": "Gestión de Menú"
+        },
+        {
+            "name": "Menú del Día",
+            "description": "Menú del Día"
         },
         {
             "name": "Gestión de Usuarios",
