@@ -3076,6 +3076,128 @@
                 ]
             }
         },
+        "/api/orders/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Anular comanda antes de preparación",
+                "description": "Anula una comanda antes de que cocina inicie su preparación. Libera inmediatamente el bloqueo de existencias de insumos asociados, marca la mesa como disponible (si el pedido era en mesa) y notifica en tiempo real a la pantalla de cocina mediante el evento ComandaCancelada en el canal private-cocina.",
+                "operationId": "cancelOrder",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la comanda a anular",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Motivo o justificación de la cancelación",
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CancelOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Comanda cancelada exitosamente y existencias liberadas.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Comanda cancelada exitosamente y existencias liberadas."
+                                        },
+                                        "order": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Comanda no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Comanda no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "La comanda ya está en preparación, entregada o previamente cancelada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La comanda ya está en preparación en cocina y no puede cancelarse directamente. Remítase a la modificación de pedidos en curso."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Mesero/Cajero o Administrador.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para cancelar comandas. Se requiere rol de Mesero/Cajero o Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/order-statuses": {
             "get": {
                 "tags": [
@@ -5767,6 +5889,27 @@
                 "example": {
                     "reason": "Ajuste revisado y verificado con conteo físico en almacén."
                 }
+            },
+            "CancelOrderRequest": {
+                "title": "Cancel Order Request",
+                "description": "Datos para anular una comanda antes de que cocina inicie su preparación",
+                "properties": {
+                    "cancellation_reason": {
+                        "description": "Motivo o justificación de la cancelación de la comanda",
+                        "type": "string",
+                        "example": "El cliente cambió de opinión y solicita anular el pedido antes de preparación",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "reason": {
+                        "description": "Alias alternativo para el motivo de cancelación",
+                        "type": "string",
+                        "example": "Cliente decidió retirarse del restaurante",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object"
             },
             "CreateOrderComplementItem": {
                 "title": "Create Order Complement Item",
