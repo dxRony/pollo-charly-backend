@@ -3684,22 +3684,150 @@
                 ]
             }
         },
+        "/api/ping": {
+            "get": {
+                "tags": [
+                    "General"
+                ],
+                "summary": "Verificar estado de la API",
+                "description": "Endpoint de diagnóstico para comprobar la disponibilidad y conectividad con la API.",
+                "operationId": "ping",
+                "responses": {
+                    "200": {
+                        "description": "La API está en línea y respondiendo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "pong desde Laravel"
+                                        },
+                                        "timestamp": {
+                                            "type": "string",
+                                            "example": "2026-09-20 18:00:00"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/table-statuses": {
+            "get": {
+                "tags": [
+                    "Gestión de Mesas"
+                ],
+                "summary": "Listar estados de mesa",
+                "description": "Obtiene el catálogo de estados disponibles para las mesas del restaurante (disponible, ocupada, mantenimiento, inactiva).",
+                "operationId": "listTableStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de estados obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/TableStatusResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/restaurant-tables": {
             "get": {
                 "tags": [
-                    "Comandas y Pedidos"
+                    "Gestión de Mesas"
                 ],
                 "summary": "Listar mesas del restaurante",
-                "description": "Obtiene el listado de mesas del restaurante con su estado actual y disponibilidad.",
+                "description": "Obtiene el listado de mesas registradas en el restaurante, con opción a filtrar únicamente las disponibles para asignación a comandas, por estado operativo o por búsqueda.",
                 "operationId": "listRestaurantTables",
                 "parameters": [
                     {
                         "name": "available_only",
                         "in": "query",
-                        "description": "Filtrar solo mesas disponibles",
+                        "description": "Filtrar únicamente mesas disponibles/libres para comanda",
                         "required": false,
                         "schema": {
                             "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filtrar por nombre de estado (disponible, ocupada, mantenimiento, inactiva)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "table_status_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de estado de mesa",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "min_capacity",
+                        "in": "query",
+                        "description": "Filtrar mesas con capacidad mínima para N comensales",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por número de mesa",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de mesas por página (opcional, por defecto lista todas)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
                         }
                     }
                 ],
@@ -3744,30 +3872,86 @@
                         "bearerAuth": []
                     }
                 ]
-            }
-        },
-        "/api/ping": {
-            "get": {
+            },
+            "post": {
                 "tags": [
-                    "General"
+                    "Gestión de Mesas"
                 ],
-                "summary": "Verificar estado de la API",
-                "description": "Endpoint de diagnóstico para comprobar la disponibilidad y conectividad con la API.",
-                "operationId": "ping",
+                "summary": "Registrar nueva mesa",
+                "description": "Registra una nueva mesa en el salón con su número identificador único y capacidad de comensales. La mesa se crea en estado inicial \"disponible\". Exclusivo para administradores.",
+                "operationId": "createRestaurantTable",
+                "requestBody": {
+                    "description": "Datos de la nueva mesa",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTableRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
-                    "200": {
-                        "description": "La API está en línea y respondiendo.",
+                    "201": {
+                        "description": "Mesa registrada exitosamente.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "example": "pong desde Laravel"
+                                            "example": "Mesa registrada exitosamente."
                                         },
-                                        "timestamp": {
+                                        "table": {
+                                            "$ref": "#/components/schemas/RestaurantTableResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos no válidos o número de mesa duplicado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
                                             "type": "string",
-                                            "example": "2026-09-20 18:00:00"
+                                            "example": "El número de mesa ya se encuentra registrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para gestionar mesas. Se requiere rol de Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
                                         }
                                     },
                                     "type": "object"
@@ -3775,7 +3959,387 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/restaurant-tables/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Mesas"
+                ],
+                "summary": "Consultar detalle de mesa",
+                "description": "Obtiene el detalle completo de una mesa específica del restaurante y su estado actual.",
+                "operationId": "getRestaurantTable",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la mesa",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la mesa obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "table": {
+                                            "$ref": "#/components/schemas/RestaurantTableResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Mesa no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Mesa no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Gestión de Mesas"
+                ],
+                "summary": "Actualizar mesa",
+                "description": "Actualiza el número de mesa, capacidad o estado de una mesa existente. Si se intenta desactivar o poner en mantenimiento, valida que no tenga comandas activas en curso.",
+                "operationId": "updateRestaurantTable",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la mesa",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Campos a modificar de la mesa",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTableRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mesa actualizada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Mesa actualizada exitosamente."
+                                        },
+                                        "table": {
+                                            "$ref": "#/components/schemas/RestaurantTableResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Mesa con comanda activa o número duplicado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede desactivar la mesa porque tiene una comanda activa en curso."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Mesa no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Mesa no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para gestionar mesas. Se requiere rol de Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Mesas"
+                ],
+                "summary": "Eliminar o dar de baja una mesa",
+                "description": "Elimina una mesa del sistema. Si la mesa ya tiene un historial de comandas asociadas, se desactiva de forma lógica (inactiva) para conservar la integridad del historial. Si no tiene comandas, se elimina permanentemente.",
+                "operationId": "deleteRestaurantTable",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la mesa",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mesa eliminada o desactivada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La mesa posee un historial de comandas asociadas, por lo que fue desactivada para preservar la integridad de los datos."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Mesa con comanda activa.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede dar de baja la mesa porque tiene una comanda activa en curso."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Mesa no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Mesa no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para gestionar mesas. Se requiere rol de Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/restaurant-tables/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Mesas"
+                ],
+                "summary": "Cambiar estado o desactivar mesa",
+                "description": "Cambia el estado operativo de una mesa o la desactiva/activa (baja lógica). No permite desactivar mesas que se encuentren actualmente ocupadas o con comandas activas.",
+                "operationId": "toggleRestaurantTableStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la mesa",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Parámetros del nuevo estado",
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToggleTableStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado de mesa actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Mesa desactivada exitosamente."
+                                        },
+                                        "table": {
+                                            "$ref": "#/components/schemas/RestaurantTableResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Mesa con comanda activa u ocupada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede desactivar la mesa porque tiene una comanda activa en curso."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Mesa no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Mesa no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para gestionar mesas. Se requiere rol de Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/roles": {
@@ -6884,6 +7448,99 @@
                 },
                 "type": "object"
             },
+            "CreateTableRequest": {
+                "title": "Create Table Request",
+                "description": "Datos necesarios para registrar una nueva mesa en el salón del restaurante",
+                "required": [
+                    "number",
+                    "capacity"
+                ],
+                "properties": {
+                    "number": {
+                        "description": "Número identificador único de la mesa en el restaurante",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "capacity": {
+                        "description": "Capacidad máxima de comensales sentados",
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "table_status_id": {
+                        "description": "ID de estado inicial opcional (por defecto 1 = disponible)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ToggleTableStatusRequest": {
+                "title": "Toggle Table Status Request",
+                "description": "Parámetros para cambiar el estado operativo o dar de baja una mesa",
+                "properties": {
+                    "status": {
+                        "description": "Nombre del nuevo estado (disponible, mantenimiento, inactiva)",
+                        "type": "string",
+                        "example": "inactiva",
+                        "nullable": true,
+                        "enum": [
+                            "disponible",
+                            "mantenimiento",
+                            "inactiva"
+                        ]
+                    },
+                    "is_active": {
+                        "description": "Atajo booleano (false para inactivar, true para poner disponible)",
+                        "type": "boolean",
+                        "example": false,
+                        "nullable": true
+                    },
+                    "table_status_id": {
+                        "description": "ID del estado en la base de datos",
+                        "type": "integer",
+                        "example": 4,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateTableRequest": {
+                "title": "Update Table Request",
+                "description": "Datos permitidos para actualizar una mesa existente",
+                "properties": {
+                    "number": {
+                        "description": "Número identificador único de la mesa en el restaurante",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    },
+                    "capacity": {
+                        "description": "Capacidad máxima de comensales sentados",
+                        "type": "integer",
+                        "example": 6,
+                        "nullable": true
+                    },
+                    "table_status_id": {
+                        "description": "ID de estado de la mesa",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "status": {
+                        "description": "Nombre del estado (disponible, mantenimiento, inactiva)",
+                        "type": "string",
+                        "example": "disponible",
+                        "nullable": true,
+                        "enum": [
+                            "disponible",
+                            "mantenimiento",
+                            "inactiva"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
             "CreateSaleRequest": {
                 "title": "Create Sale Request",
                 "description": "Datos necesarios para registrar la venta comercial, realizar el cobro y cerrar la comanda",
@@ -8011,6 +8668,18 @@
                         "description": "Indica si la mesa está libre para asignación",
                         "type": "boolean",
                         "example": true
+                    },
+                    "created_at": {
+                        "description": "Fecha y hora de registro de la mesa",
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "updated_at": {
+                        "description": "Fecha y hora de última modificación",
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -8298,6 +8967,23 @@
                 },
                 "type": "object"
             },
+            "TableStatusResource": {
+                "title": "Table Status Resource",
+                "description": "Estado operativo de las mesas del restaurante (disponible, ocupada, mantenimiento, inactiva)",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del estado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre clave del estado",
+                        "type": "string",
+                        "example": "disponible"
+                    }
+                },
+                "type": "object"
+            },
             "UserRole": {
                 "title": "User Role",
                 "description": "Rol del usuario dentro del sistema",
@@ -8393,6 +9079,10 @@
         {
             "name": "Comandas y Pedidos",
             "description": "Comandas y Pedidos"
+        },
+        {
+            "name": "Gestión de Mesas",
+            "description": "Gestión de Mesas"
         },
         {
             "name": "Gestión de Usuarios",

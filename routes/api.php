@@ -11,6 +11,7 @@ use App\Http\Controllers\DishController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\RestaurantTableController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SupplyAlertController;
@@ -63,7 +64,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/order-statuses', [OrderController::class, 'statuses']);
     Route::get('/order-types', [OrderController::class, 'types']);
-    Route::get('/restaurant-tables', [OrderController::class, 'tables']);
+    Route::get('/table-statuses', [RestaurantTableController::class, 'statuses']);
+    Route::get('/restaurant-tables', [RestaurantTableController::class, 'index']);
+    Route::get('/restaurant-tables/{id}', [RestaurantTableController::class, 'show']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/kitchen/orders', [OrderController::class, 'kitchenOrders']);
     Route::post('/orders', [OrderController::class, 'store']);
@@ -110,6 +113,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/inventory-movements/{id}/reject', [InventoryMovementController::class, 'rejectAdjustment']);
 
         Route::post('/supply-alerts/{id}/attend', [SupplyAlertController::class, 'attend']);
+        Route::post('/restaurant-tables', [RestaurantTableController::class, 'store']);
+        Route::put('/restaurant-tables/{id}', [RestaurantTableController::class, 'update']);
+        Route::patch('/restaurant-tables/{id}', [RestaurantTableController::class, 'update']);
+        Route::patch('/restaurant-tables/{id}/status', [RestaurantTableController::class, 'toggleStatus']);
+        Route::delete('/restaurant-tables/{id}', [RestaurantTableController::class, 'destroy']);
     });
 });
 
