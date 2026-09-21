@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PingController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ComplementController;
 use App\Http\Controllers\DishController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
@@ -34,6 +35,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/dishes', [DishController::class, 'index']);
     Route::get('/dishes/{dish}', [DishController::class, 'show']);
+    Route::get('/complements', [ComplementController::class, 'index']);
+    Route::get('/complements/{complement}', [ComplementController::class, 'show']);
 
     Route::middleware('role:Administrador')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
@@ -44,6 +47,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/dishes/{dish}', [DishController::class, 'update']);
         Route::delete('/dishes/{dish}', [DishController::class, 'destroy']);
         Route::patch('/dishes/{dish}/status', [DishController::class, 'toggleStatus']);
+
+        Route::post('/complements', [ComplementController::class, 'store']);
+        Route::put('/complements/{complement}', [ComplementController::class, 'update']);
+        Route::delete('/complements/{complement}', [ComplementController::class, 'destroy']);
+        Route::patch('/complements/{complement}/status', [ComplementController::class, 'toggleStatus']);
     });
 });
 

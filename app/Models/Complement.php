@@ -67,4 +67,16 @@ class Complement extends Model
     {
         return $this->hasMany(OrderItemComplement::class);
     }
+
+    /**
+     * Check if the complement is used in active orders (pending or in preparation).
+     */
+    public function hasActiveOrders(): bool
+    {
+        return $this->orderItemComplements()
+            ->whereHas('orderItem.order.status', function ($query) {
+                $query->whereIn('name', [OrderStatus::PENDIENTE, OrderStatus::EN_PREPARACION]);
+            })
+            ->exists();
+    }
 }

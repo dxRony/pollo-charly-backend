@@ -663,6 +663,620 @@
                 ]
             }
         },
+        "/api/complements": {
+            "get": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Listar complementos del menú",
+                "description": "Obtiene el listado paginado de complementos (extras) registrados en el catálogo, permitiendo filtrar por búsqueda y estado de activación.",
+                "operationId": "listComplements",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por nombre o descripción",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Filtrar por estado activo/inactivo",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de complementos obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ComplementResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Crear un nuevo complemento",
+                "description": "Registra un nuevo complemento (extra) asociando opcionalmente los insumos que se consumen por porción.",
+                "operationId": "createComplement",
+                "requestBody": {
+                    "description": "Datos del nuevo complemento",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateComplementRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Complemento registrado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento registrado exitosamente."
+                                        },
+                                        "complement": {
+                                            "$ref": "#/components/schemas/ComplementResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (nombre duplicado, precio inválido, etc.).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El nombre del complemento ya existe."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/complements/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Consultar información de un complemento",
+                "description": "Obtiene los datos detallados de un complemento específico y sus insumos asociados.",
+                "operationId": "getComplement",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del complemento",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Complemento obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ComplementResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Complemento no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Actualizar un complemento existente",
+                "description": "Actualiza los datos básicos y la lista de insumos de un complemento existente.",
+                "operationId": "updateComplement",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del complemento a modificar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos actualizados del complemento",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateComplementRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Complemento actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento actualizado exitosamente."
+                                        },
+                                        "complement": {
+                                            "$ref": "#/components/schemas/ComplementResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (nombre duplicado, precio inválido, etc.).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El nombre del complemento ya existe."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Complemento no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Desactivar un complemento (baja lógica)",
+                "description": "Desactiva un complemento del menú mediante baja lógica (is_active = false) siempre que no se encuentre asociado a comandas activas pendientes o en preparación.",
+                "operationId": "deleteComplement",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del complemento a desactivar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Complemento desactivado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "El complemento está en uso en comandas activas.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede desactivar el complemento porque está en uso en comandas activas (pendientes o en preparación)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Complemento no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/complements/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Cambiar estado de disponibilidad del complemento",
+                "description": "Activa o desactiva la disponibilidad de un complemento en el menú. Si se intenta desactivar, valida que no esté en uso en comandas activas pendientes o en preparación.",
+                "operationId": "toggleComplementStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del complemento",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Nuevo estado de activación",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToggleComplementStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento activado exitosamente en el menú."
+                                        },
+                                        "complement": {
+                                            "$ref": "#/components/schemas/ComplementResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "No se puede desactivar debido a comandas activas.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede desactivar el complemento porque está en uso en comandas activas (pendientes o en preparación)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Complemento no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Complemento no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/dishes": {
             "get": {
                 "tags": [
@@ -2206,6 +2820,151 @@
                     "code": "123456"
                 }
             },
+            "CreateComplementSupplyItemInput": {
+                "title": "Create Complement Supply Item Input",
+                "required": [
+                    "supply_id",
+                    "required_quantity"
+                ],
+                "properties": {
+                    "supply_id": {
+                        "description": "ID del insumo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "required_quantity": {
+                        "description": "Cantidad requerida de insumo por porción (mayor a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.1
+                    }
+                },
+                "type": "object"
+            },
+            "CreateComplementRequest": {
+                "title": "Create Complement Request",
+                "description": "Datos requeridos para registrar un nuevo complemento en el sistema",
+                "required": [
+                    "name",
+                    "extra_price"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre único del complemento",
+                        "type": "string",
+                        "example": "Extra queso",
+                        "maxLength": 150
+                    },
+                    "description": {
+                        "description": "Descripción opcional del complemento",
+                        "type": "string",
+                        "example": "Porción extra de queso fundido para acompañar",
+                        "nullable": true
+                    },
+                    "extra_price": {
+                        "description": "Precio adicional a sumar al platillo (mayor o igual a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 10
+                    },
+                    "is_active": {
+                        "description": "Estado inicial de disponibilidad",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "supplies": {
+                        "description": "Insumos que se descuentan del inventario al servir este complemento",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CreateComplementSupplyItemInput"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Extra queso",
+                    "description": "Porción extra de queso fundido para acompañar",
+                    "extra_price": 10,
+                    "is_active": true,
+                    "supplies": [
+                        {
+                            "supply_id": 1,
+                            "required_quantity": 0.1
+                        }
+                    ]
+                }
+            },
+            "ToggleComplementStatusRequest": {
+                "title": "Toggle Complement Status Request",
+                "description": "Datos requeridos para activar o desactivar un complemento en el menú",
+                "required": [
+                    "is_active"
+                ],
+                "properties": {
+                    "is_active": {
+                        "description": "Nuevo estado de activación del complemento",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "is_active": false
+                }
+            },
+            "UpdateComplementRequest": {
+                "title": "Update Complement Request",
+                "description": "Datos permitidos para modificar un complemento existente",
+                "required": [
+                    "name",
+                    "extra_price"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre único del complemento",
+                        "type": "string",
+                        "example": "Extra queso fundido",
+                        "maxLength": 150
+                    },
+                    "description": {
+                        "description": "Descripción opcional del complemento",
+                        "type": "string",
+                        "example": "Porción generosa de queso fundido",
+                        "nullable": true
+                    },
+                    "extra_price": {
+                        "description": "Precio adicional a sumar al platillo (mayor o igual a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 12
+                    },
+                    "is_active": {
+                        "description": "Estado del complemento",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "supplies": {
+                        "description": "Lista de insumos asociados (reemplaza la lista previa si se provee)",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CreateComplementSupplyItemInput"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Extra queso fundido",
+                    "description": "Porción generosa de queso fundido",
+                    "extra_price": 12,
+                    "is_active": true,
+                    "supplies": [
+                        {
+                            "supply_id": 1,
+                            "required_quantity": 0.12
+                        }
+                    ]
+                }
+            },
             "CreateDishRecipeItemInput": {
                 "title": "Create Dish Recipe Item Input",
                 "required": [
@@ -2529,6 +3288,74 @@
                     "role_id": 2,
                     "is_active": true
                 }
+            },
+            "ComplementSupplyItemResource": {
+                "title": "Complement Supply Item",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supply_name": {
+                        "type": "string",
+                        "example": "Queso Mozzarella"
+                    },
+                    "measurement_unit": {
+                        "type": "string",
+                        "example": "kg"
+                    },
+                    "required_quantity": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.1
+                    }
+                },
+                "type": "object"
+            },
+            "ComplementResource": {
+                "title": "Complement Resource",
+                "description": "Información completa del complemento y sus insumos requeridos por porción",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Extra queso"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Porción extra de queso fundido",
+                        "nullable": true
+                    },
+                    "extra_price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 10
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "supplies": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ComplementSupplyItemResource"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
             },
             "DishCategoryResource": {
                 "title": "Dish Category",
