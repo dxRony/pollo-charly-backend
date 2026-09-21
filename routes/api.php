@@ -8,7 +8,9 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ComplementController;
 use App\Http\Controllers\DailyMenuController;
 use App\Http\Controllers\DishController;
+use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,10 +38,13 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/measurement-units', [MeasurementUnitController::class, 'index']);
     Route::get('/dishes', [DishController::class, 'index']);
     Route::get('/dishes/{dish}', [DishController::class, 'show']);
     Route::get('/complements', [ComplementController::class, 'index']);
     Route::get('/complements/{complement}', [ComplementController::class, 'show']);
+    Route::get('/supplies', [SupplyController::class, 'index']);
+    Route::get('/supplies/{supply}', [SupplyController::class, 'show']);
 
     Route::middleware('role:Administrador')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
@@ -58,6 +63,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/complements/{complement}', [ComplementController::class, 'update']);
         Route::delete('/complements/{complement}', [ComplementController::class, 'destroy']);
         Route::patch('/complements/{complement}/status', [ComplementController::class, 'toggleStatus']);
+
+        Route::post('/supplies', [SupplyController::class, 'store']);
+        Route::put('/supplies/{supply}', [SupplyController::class, 'update']);
+        Route::delete('/supplies/{supply}', [SupplyController::class, 'destroy']);
+        Route::patch('/supplies/{supply}/status', [SupplyController::class, 'toggleStatus']);
     });
 });
 
