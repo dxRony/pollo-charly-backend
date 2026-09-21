@@ -40,4 +40,20 @@ class RestaurantTable extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * Determina si la mesa tiene comandas activas pendientes, en preparación o listas.
+     */
+    public function hasActiveOrders(): bool
+    {
+        return $this->orders()
+            ->whereHas('status', function ($query) {
+                $query->whereIn('name', [
+                    OrderStatus::PENDIENTE,
+                    OrderStatus::EN_PREPARACION,
+                    OrderStatus::LISTA,
+                ]);
+            })
+            ->exists();
+    }
 }

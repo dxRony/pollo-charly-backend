@@ -1406,35 +1406,9 @@ class OrderController extends Controller
         ]);
     }
 
-    #[OA\Get(
-        path: '/api/restaurant-tables',
-        operationId: 'listRestaurantTables',
-        description: 'Obtiene el listado de mesas del restaurante con su estado actual y disponibilidad.',
-        summary: 'Listar mesas del restaurante',
-        security: [['bearerAuth' => []]],
-        tags: ['Comandas y Pedidos'],
-        parameters: [
-            new OA\Parameter(name: 'available_only', in: 'query', description: 'Filtrar solo mesas disponibles', required: false, schema: new OA\Schema(type: 'boolean')),
-        ],
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Listado de mesas obtenido exitosamente.',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'data', type: 'array', items: new OA\Items(ref: '#/components/schemas/RestaurantTableResource')),
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 401,
-                description: 'No autenticado.',
-                content: new OA\JsonContent(
-                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Unauthenticated.')]
-                )
-            ),
-        ]
-    )]
+    /**
+     * Obtiene el listado de mesas del restaurante (delegado a RestaurantTableController).
+     */
     public function tables(Request $request): JsonResponse
     {
         $query = RestaurantTable::query()->with('status');

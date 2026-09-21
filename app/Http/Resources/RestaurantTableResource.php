@@ -20,6 +20,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'table_status_id', description: 'ID del estado de la mesa', type: 'integer', example: 1),
         new OA\Property(property: 'status_name', description: 'Nombre del estado (disponible, ocupada, etc.)', type: 'string', example: 'disponible'),
         new OA\Property(property: 'is_available', description: 'Indica si la mesa está libre para asignación', type: 'boolean', example: true),
+        new OA\Property(property: 'created_at', description: 'Fecha y hora de registro de la mesa', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'updated_at', description: 'Fecha y hora de última modificación', type: 'string', format: 'date-time', nullable: true),
     ]
 )]
 class RestaurantTableResource extends JsonResource
@@ -42,6 +44,8 @@ class RestaurantTableResource extends JsonResource
             'table_status_id' => $this->table_status_id,
             'status_name' => $statusName,
             'is_available' => $statusName === TableStatus::DISPONIBLE,
+            'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
 }
