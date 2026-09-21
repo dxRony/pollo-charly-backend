@@ -15,6 +15,8 @@ class InventoryMovementType extends Model
 
     public const COMPRA_ENTRADA = 'compra_entrada';
     public const CONSUMO_VENTA = 'consumo_venta';
+    public const MERMA_DANO = 'merma_dano';
+    public const AJUSTE_INVENTARIO = 'ajuste_inventario';
     public const CANCELACION_PEDIDO = 'cancelacion_pedido';
     public const AJUSTE_MERMA = 'ajuste_merma';
     public const AJUSTE_SOBRANTE = 'ajuste_sobrante';

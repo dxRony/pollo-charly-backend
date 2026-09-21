@@ -2158,6 +2158,586 @@
                 ]
             }
         },
+        "/api/inventory-movements": {
+            "get": {
+                "tags": [
+                    "Movimientos de Inventario"
+                ],
+                "summary": "Listar movimientos de inventario",
+                "description": "Obtiene el listado paginado de movimientos de inventario registrados, permitiendo filtrar por insumo, tipo de movimiento, estado de ajuste, rango de fechas y texto de búsqueda.",
+                "operationId": "listInventoryMovements",
+                "parameters": [
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del producto o insumo",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Filtrar por nombre de tipo de movimiento (compra, salida, merma, ajuste, compra_entrada, etc.)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "inventory_movement_type_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del tipo de movimiento",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "adjustment_status",
+                        "in": "query",
+                        "description": "Filtrar por estado del ajuste (pendiente, aprobado, rechazado)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "adjustment_status_type_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del estado de ajuste",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "pending_adjustments",
+                        "in": "query",
+                        "description": "Filtrar únicamente solicitudes de ajuste pendientes de aprobación",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por motivo o nombre/código de insumo",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de movimientos obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InventoryMovementResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 50
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 4
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Movimientos de Inventario"
+                ],
+                "summary": "Registrar movimiento de inventario",
+                "description": "Registra un movimiento de inventario (compra, salida, merma o ajuste) sobre un insumo. Si el movimiento deja la existencia por debajo del mínimo, se genera automáticamente una alerta de reposición. Los ajustes requieren aprobación de administradora.",
+                "operationId": "createInventoryMovement",
+                "requestBody": {
+                    "description": "Datos del movimiento a registrar",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateInventoryMovementRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Movimiento registrado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Movimiento de compra registrado exitosamente."
+                                        },
+                                        "movement": {
+                                            "$ref": "#/components/schemas/InventoryMovementResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación o existencia insuficiente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Existencia insuficiente para registrar la salida."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/inventory-movements/{id}": {
+            "get": {
+                "tags": [
+                    "Movimientos de Inventario"
+                ],
+                "summary": "Consultar detalle de un movimiento de inventario",
+                "description": "Obtiene el detalle completo de un movimiento de inventario específico.",
+                "operationId": "getInventoryMovement",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del movimiento a consultar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Movimiento obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "movement": {
+                                            "$ref": "#/components/schemas/InventoryMovementResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Movimiento no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Movimiento de inventario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/inventory-movements/{id}/approve": {
+            "post": {
+                "tags": [
+                    "Movimientos de Inventario"
+                ],
+                "summary": "Aprobar solicitud de ajuste de inventario",
+                "description": "Aprueba una solicitud de ajuste de inventario pendiente. Corrige la existencia física registrada en almacén con la cantidad acordada y guarda la trazabilidad del usuario aprobador.",
+                "operationId": "approveInventoryAdjustment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del movimiento de ajuste a aprobar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Notas u observaciones opcionales de aprobación",
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewAdjustmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ajuste de inventario aprobado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ajuste de inventario aprobado y existencia actualizada exitosamente."
+                                        },
+                                        "movement": {
+                                            "$ref": "#/components/schemas/InventoryMovementResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "El movimiento no es un ajuste o no se encuentra en estado pendiente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Solo se pueden aprobar solicitudes de ajuste que se encuentren en estado pendiente de aprobación."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Movimiento no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Movimiento de inventario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/inventory-movements/{id}/reject": {
+            "post": {
+                "tags": [
+                    "Movimientos de Inventario"
+                ],
+                "summary": "Rechazar solicitud de ajuste de inventario",
+                "description": "Rechaza una solicitud de ajuste de inventario pendiente sin modificar la existencia física registrada en almacén.",
+                "operationId": "rejectInventoryAdjustment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del movimiento de ajuste a rechazar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Motivo u observación del rechazo",
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewAdjustmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ajuste de inventario rechazado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ajuste de inventario rechazado exitosamente."
+                                        },
+                                        "movement": {
+                                            "$ref": "#/components/schemas/InventoryMovementResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "El movimiento no es un ajuste o no se encuentra en estado pendiente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Solo se pueden rechazar solicitudes de ajuste que se encuentren en estado pendiente de aprobación."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Movimiento no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Movimiento de inventario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/inventory-movement-types": {
+            "get": {
+                "tags": [
+                    "Movimientos de Inventario"
+                ],
+                "summary": "Listar tipos de movimiento de inventario",
+                "description": "Obtiene el catálogo de tipos de movimiento de inventario disponibles en el sistema.",
+                "operationId": "listInventoryMovementTypes",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de tipos de movimiento obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InventoryMovementTypeResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/measurement-units": {
             "get": {
                 "tags": [
@@ -4115,6 +4695,98 @@
                     ]
                 }
             },
+            "CreateInventoryMovementRequest": {
+                "title": "Create Inventory Movement Request",
+                "description": "Datos necesarios para registrar un movimiento de inventario (compra, salida, merma o ajuste)",
+                "required": [
+                    "supply_id"
+                ],
+                "properties": {
+                    "supply_id": {
+                        "description": "ID del producto o insumo de almacén",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "type": {
+                        "description": "Tipo de movimiento (compra, salida, merma, ajuste, compra_entrada, consumo_venta, merma_dano, ajuste_inventario)",
+                        "type": "string",
+                        "example": "compra",
+                        "nullable": true
+                    },
+                    "inventory_movement_type_id": {
+                        "description": "ID del tipo de movimiento en base de datos",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "quantity": {
+                        "description": "Cantidad del movimiento (o cantidad física corregida en ajustes)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 25.5
+                    },
+                    "new_stock": {
+                        "description": "Nueva existencia física en caso de ajuste de inventario (opcional si se provee quantity)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 50,
+                        "nullable": true
+                    },
+                    "reason": {
+                        "description": "Motivo u observación del movimiento (obligatorio para merma y ajuste)",
+                        "type": "string",
+                        "example": "Merma por producto en mal estado",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "order_id": {
+                        "description": "ID de la comanda relacionada (opcional)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "order_item_id": {
+                        "description": "ID del ítem de comanda relacionado (opcional)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra relacionada (opcional)",
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supply_id": 1,
+                    "type": "compra",
+                    "quantity": 25.5,
+                    "reason": "Ingreso de mercadería por factura F-1234"
+                }
+            },
+            "ReviewAdjustmentRequest": {
+                "title": "Review Adjustment Request",
+                "description": "Datos opcionales para la aprobación o rechazo de una solicitud de ajuste de inventario",
+                "properties": {
+                    "reason": {
+                        "description": "Observación o motivo de la revisión (aprobación o rechazo)",
+                        "type": "string",
+                        "example": "Aprobado tras verificar merma física",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "notes": {
+                        "description": "Notas adicionales de la administradora",
+                        "type": "string",
+                        "example": "Se verificó con el cocinero en turno",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "reason": "Ajuste revisado y verificado con conteo físico en almacén."
+                }
+            },
             "CreateSupplyRequest": {
                 "title": "Create Supply Request",
                 "description": "Datos necesarios para dar de alta un producto o insumo en el inventario",
@@ -4357,6 +5029,23 @@
                     "is_active": true
                 }
             },
+            "AdjustmentStatusTypeResource": {
+                "title": "Adjustment Status Type Resource",
+                "description": "Estado de una solicitud de ajuste de inventario",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del estado de ajuste",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre o clave del estado de ajuste",
+                        "type": "string",
+                        "example": "pendiente_aprobacion"
+                    }
+                },
+                "type": "object"
+            },
             "ComplementSupplyItemResource": {
                 "title": "Complement Supply Item",
                 "properties": {
@@ -4553,6 +5242,150 @@
                 },
                 "type": "object"
             },
+            "InventoryMovementResource": {
+                "title": "Inventory Movement Resource",
+                "description": "Información completa del movimiento de inventario",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del movimiento",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "description": "ID del producto o insumo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SupplyResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "inventory_movement_type_id": {
+                        "description": "ID del tipo de movimiento",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "movement_type": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/InventoryMovementTypeResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "type": {
+                        "description": "Nombre clave del tipo de movimiento",
+                        "type": "string",
+                        "example": "compra_entrada"
+                    },
+                    "user_id": {
+                        "description": "ID del usuario que registró el movimiento",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user": {
+                        "description": "Información básica del usuario que registró el movimiento",
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "quantity": {
+                        "description": "Cantidad afectada en el movimiento",
+                        "type": "number",
+                        "format": "float",
+                        "example": 10
+                    },
+                    "previous_stock": {
+                        "description": "Existencia previa al movimiento",
+                        "type": "number",
+                        "format": "float",
+                        "example": 20
+                    },
+                    "new_stock": {
+                        "description": "Existencia resultante o proyectada tras el movimiento",
+                        "type": "number",
+                        "format": "float",
+                        "example": 30
+                    },
+                    "reason": {
+                        "description": "Motivo u observación del movimiento",
+                        "type": "string",
+                        "example": "Merma por producto vencido",
+                        "nullable": true
+                    },
+                    "order_id": {
+                        "description": "ID de comanda asociada (si aplica)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "order_item_id": {
+                        "description": "ID del ítem de comanda asociado (si aplica)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra asociada (si aplica)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "adjustment_status_type_id": {
+                        "description": "ID del estado de ajuste (si aplica)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "adjustment_status": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/AdjustmentStatusTypeResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "approver_user_id": {
+                        "description": "ID de la administradora que aprobó o rechazó el ajuste",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "approver_user": {
+                        "description": "Información básica del usuario que aprobó o rechazó",
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "description": "Fecha y hora de registro del movimiento",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "description": "Fecha y hora de última actualización",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z"
+                    }
+                },
+                "type": "object"
+            },
+            "InventoryMovementTypeResource": {
+                "title": "Inventory Movement Type Resource",
+                "description": "Tipo de movimiento de inventario",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del tipo de movimiento",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre o clave del tipo de movimiento",
+                        "type": "string",
+                        "example": "compra_entrada"
+                    }
+                },
+                "type": "object"
+            },
             "MeasurementUnitResource": {
                 "title": "Measurement Unit Resource",
                 "description": "Unidad de medida para insumos y recetas",
@@ -4728,6 +5561,10 @@
         {
             "name": "Menú del Día",
             "description": "Menú del Día"
+        },
+        {
+            "name": "Movimientos de Inventario",
+            "description": "Movimientos de Inventario"
         },
         {
             "name": "Gestión de Insumos",
