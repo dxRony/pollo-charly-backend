@@ -10,6 +10,7 @@ use App\Http\Controllers\DailyMenuController;
 use App\Http\Controllers\DishController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupplyAlertController;
 use App\Http\Controllers\SupplyController;
@@ -58,6 +59,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/supply-alerts', [SupplyAlertController::class, 'index']);
     Route::post('/supply-alerts', [SupplyAlertController::class, 'store']);
     Route::get('/supply-alerts/{id}', [SupplyAlertController::class, 'show']);
+
+    Route::get('/order-statuses', [OrderController::class, 'statuses']);
+    Route::get('/order-types', [OrderController::class, 'types']);
+    Route::get('/restaurant-tables', [OrderController::class, 'tables']);
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
 
     Route::middleware('role:Administrador')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);

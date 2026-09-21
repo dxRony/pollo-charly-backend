@@ -2784,6 +2784,462 @@
                 ]
             }
         },
+        "/api/orders": {
+            "get": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Listar comandas",
+                "description": "Obtiene el listado paginado de comandas registradas en el sistema, con filtros por estado, tipo de pedido, mesa, mesero y fecha.",
+                "operationId": "listOrders",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filtrar por nombre de estado o lista separada por comas (ej. pendiente,en_preparacion)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "order_type",
+                        "in": "query",
+                        "description": "Filtrar por tipo de pedido (en_mesa o para_llevar)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "restaurant_table_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de mesa",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "waiter_user_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de mesero responsable",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Filtrar por fecha específica (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por código de comanda o notas",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de registros por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de comandas obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/OrderResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Registrar comanda con verificación de insumos y bloqueo de existencias",
+                "description": "Registra una nueva comanda (en mesa o para llevar), calculando automáticamente subtotales y totales. Valida que la mesa esté libre (si es en mesa), comprueba que haya existencias suficientes de insumos según recetas, bloquea (reserva) esas existencias y transmite la comanda a cocina en tiempo real vía WebSocket (evento ComandaEnviadaACocina en canal private-cocina).",
+                "operationId": "createOrder",
+                "requestBody": {
+                    "description": "Datos de la comanda y platillos solicitados",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Comanda registrada exitosamente y enviada a cocina.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Comanda registrada y enviada a cocina exitosamente."
+                                        },
+                                        "order": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Mesa ocupada, producto no disponible o existencias insuficientes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No hay suficientes insumos disponibles para preparar los productos solicitados."
+                                        },
+                                        "insufficient_supplies": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/{id}": {
+            "get": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Consultar detalle de una comanda",
+                "description": "Obtiene el detalle completo de una comanda con sus platillos, complementos, cálculos de subtotales y totales.",
+                "operationId": "getOrder",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la comanda a consultar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de comanda obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "order": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Comanda no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Comanda no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/order-statuses": {
+            "get": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Listar estados de comanda",
+                "description": "Obtiene el catálogo de estados de comandas.",
+                "operationId": "listOrderStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de estados de comanda obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/OrderStatusResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/order-types": {
+            "get": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Listar tipos de comanda",
+                "description": "Obtiene el catálogo de tipos de pedido (en_mesa o para_llevar).",
+                "operationId": "listOrderTypes",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de tipos de pedido obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/OrderTypeResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/restaurant-tables": {
+            "get": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Listar mesas del restaurante",
+                "description": "Obtiene el listado de mesas del restaurante con su estado actual y disponibilidad.",
+                "operationId": "listRestaurantTables",
+                "parameters": [
+                    {
+                        "name": "available_only",
+                        "in": "query",
+                        "description": "Filtrar solo mesas disponibles",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de mesas obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/RestaurantTableResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/ping": {
             "get": {
                 "tags": [
@@ -5312,6 +5768,123 @@
                     "reason": "Ajuste revisado y verificado con conteo físico en almacén."
                 }
             },
+            "CreateOrderComplementItem": {
+                "title": "Create Order Complement Item",
+                "description": "Complemento a añadir a un platillo de la comanda",
+                "required": [
+                    "complement_id",
+                    "quantity"
+                ],
+                "properties": {
+                    "complement_id": {
+                        "description": "ID del complemento en catálogo",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "quantity": {
+                        "description": "Cantidad del complemento",
+                        "type": "integer",
+                        "example": 1,
+                        "minimum": 1
+                    }
+                },
+                "type": "object"
+            },
+            "CreateOrderItem": {
+                "title": "Create Order Item",
+                "description": "Platillo a incluir en la comanda con sus complementos opcionales",
+                "required": [
+                    "dish_id",
+                    "quantity"
+                ],
+                "properties": {
+                    "dish_id": {
+                        "description": "ID del platillo en catálogo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "quantity": {
+                        "description": "Cantidad de porciones del platillo",
+                        "type": "integer",
+                        "example": 2,
+                        "minimum": 1
+                    },
+                    "notes": {
+                        "description": "Observaciones de preparación específicas para este platillo",
+                        "type": "string",
+                        "example": "Sin cebolla",
+                        "nullable": true,
+                        "maxLength": 500
+                    },
+                    "complements": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CreateOrderComplementItem"
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CreateOrderRequest": {
+                "title": "Create Order Request",
+                "description": "Datos requeridos para tomar y enviar una comanda a cocina",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "order_type": {
+                        "description": "Tipo de pedido: en_mesa o para_llevar",
+                        "type": "string",
+                        "example": "en_mesa",
+                        "nullable": true
+                    },
+                    "order_type_id": {
+                        "description": "ID del tipo de pedido en base de datos",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "restaurant_table_id": {
+                        "description": "ID de la mesa libre (obligatorio para pedidos en mesa)",
+                        "type": "integer",
+                        "example": 4,
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Observaciones generales para la comanda",
+                        "type": "string",
+                        "example": "Mesa 4 comensales",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CreateOrderItem"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "order_type": "en_mesa",
+                    "restaurant_table_id": 1,
+                    "notes": "Cliente solicita servicio rápido",
+                    "items": [
+                        {
+                            "dish_id": 1,
+                            "quantity": 2,
+                            "notes": "Bien dorado",
+                            "complements": [
+                                {
+                                    "complement_id": 2,
+                                    "quantity": 2
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
             "AttendSupplyAlertRequest": {
                 "title": "Attend Supply Alert Request",
                 "description": "Datos opcionales para marcar como atendida una alerta de reposición",
@@ -6017,6 +6590,308 @@
                 },
                 "type": "object"
             },
+            "OrderItemComplementResource": {
+                "title": "Order Item Complement Resource",
+                "description": "Complemento o guarnición adicional asociado a un ítem de la comanda",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del registro de complemento en la comanda",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "complement_id": {
+                        "description": "ID del complemento en el catálogo",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "complement": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/ComplementResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "quantity": {
+                        "description": "Cantidad solicitada del complemento",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "unit_price": {
+                        "description": "Precio unitario del complemento",
+                        "type": "number",
+                        "format": "float",
+                        "example": 5
+                    },
+                    "subtotal": {
+                        "description": "Subtotal calculado (cantidad × precio unitario)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 5
+                    }
+                },
+                "type": "object"
+            },
+            "OrderItemResource": {
+                "title": "Order Item Resource",
+                "description": "Ítem o platillo individual incluido dentro de una comanda",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del ítem de la comanda",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "dish_id": {
+                        "description": "ID del platillo solicitado",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "dish": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DishResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "order_item_status_id": {
+                        "description": "ID del estado del ítem",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status_name": {
+                        "description": "Nombre del estado del ítem (pendiente, en_preparacion, etc.)",
+                        "type": "string",
+                        "example": "pendiente"
+                    },
+                    "quantity": {
+                        "description": "Cantidad solicitada del platillo",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "unit_price": {
+                        "description": "Precio unitario del platillo al momento de comandar",
+                        "type": "number",
+                        "format": "float",
+                        "example": 45
+                    },
+                    "subtotal": {
+                        "description": "Subtotal del platillo (cantidad × precio unitario)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 90
+                    },
+                    "notes": {
+                        "description": "Observaciones de preparación (ej. sin cebolla, bien dorado)",
+                        "type": "string",
+                        "example": "Pechuga bien cocida",
+                        "nullable": true
+                    },
+                    "complements": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemComplementResource"
+                        }
+                    },
+                    "complements_subtotal": {
+                        "description": "Suma de subtotales de los complementos asociados",
+                        "type": "number",
+                        "format": "float",
+                        "example": 10
+                    },
+                    "total_with_complements": {
+                        "description": "Total de la línea incluyendo platillo y complementos",
+                        "type": "number",
+                        "format": "float",
+                        "example": 100
+                    }
+                },
+                "type": "object"
+            },
+            "OrderResource": {
+                "title": "Order Resource",
+                "description": "Información completa de una comanda con sus platillos, complementos, mesa y totales calculados",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único de la comanda",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "code": {
+                        "description": "Código único de seguimiento de la comanda",
+                        "type": "string",
+                        "example": "COM-0001"
+                    },
+                    "restaurant_table_id": {
+                        "description": "ID de la mesa asignada (null si es para llevar)",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
+                    },
+                    "table": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/RestaurantTableResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "waiter_user_id": {
+                        "description": "ID del mesero/cajero que tomó la comanda",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "waiter": {
+                        "description": "Información del mesero/cajero responsable",
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "order_type_id": {
+                        "description": "ID del tipo de comanda",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "order_type": {
+                        "description": "Tipo de pedido (en_mesa o para_llevar)",
+                        "type": "string",
+                        "example": "en_mesa"
+                    },
+                    "order_status_id": {
+                        "description": "ID del estado actual de la comanda",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "order_status": {
+                        "description": "Estado de la comanda (pendiente, en_preparacion, lista, entregada, cancelada)",
+                        "type": "string",
+                        "example": "pendiente"
+                    },
+                    "cancellation_reason": {
+                        "description": "Motivo de anulación (si fue cancelada)",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Observaciones generales del pedido",
+                        "type": "string",
+                        "example": "Comensales con prisa",
+                        "nullable": true
+                    },
+                    "preparation_start_time": {
+                        "description": "Fecha y hora en que cocina inició la preparación",
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemResource"
+                        }
+                    },
+                    "items_count": {
+                        "description": "Cantidad total de líneas de platillos solicitados",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "subtotal": {
+                        "description": "Subtotal acumulado de platillos y complementos",
+                        "type": "number",
+                        "format": "float",
+                        "example": 95
+                    },
+                    "total": {
+                        "description": "Total a pagar por la comanda",
+                        "type": "number",
+                        "format": "float",
+                        "example": 95
+                    },
+                    "created_at": {
+                        "description": "Fecha y hora de registro de la comanda",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "description": "Fecha y hora de última modificación",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z"
+                    }
+                },
+                "type": "object"
+            },
+            "OrderStatusResource": {
+                "title": "Order Status Resource",
+                "description": "Estado del ciclo de vida de la comanda",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del estado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre clave del estado (pendiente, en_preparacion, lista, entregada, cancelada)",
+                        "type": "string",
+                        "example": "pendiente"
+                    }
+                },
+                "type": "object"
+            },
+            "OrderTypeResource": {
+                "title": "Order Type Resource",
+                "description": "Tipo de comanda o pedido (en_mesa o para_llevar)",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del tipo de comanda",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre del tipo de comanda (en_mesa, para_llevar)",
+                        "type": "string",
+                        "example": "en_mesa"
+                    }
+                },
+                "type": "object"
+            },
+            "RestaurantTableResource": {
+                "title": "Restaurant Table Resource",
+                "description": "Mesa del restaurante con su capacidad y estado de ocupación actual",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único de la mesa",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "number": {
+                        "description": "Número identificador de la mesa",
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "capacity": {
+                        "description": "Capacidad de comensales",
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "table_status_id": {
+                        "description": "ID del estado de la mesa",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status_name": {
+                        "description": "Nombre del estado (disponible, ocupada, etc.)",
+                        "type": "string",
+                        "example": "disponible"
+                    },
+                    "is_available": {
+                        "description": "Indica si la mesa está libre para asignación",
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
             "SupplyAlertResource": {
                 "title": "Supply Alert Resource",
                 "description": "Información completa de una alerta de reposición de insumo",
@@ -6273,6 +7148,10 @@
         {
             "name": "Gestión de Insumos",
             "description": "Gestión de Insumos"
+        },
+        {
+            "name": "Comandas y Pedidos",
+            "description": "Comandas y Pedidos"
         },
         {
             "name": "Gestión de Usuarios",
