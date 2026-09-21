@@ -6,10 +6,13 @@ namespace App\Http\Controllers;
 
 use App\Events\ComandaCancelada;
 use App\Events\ComandaEnviadaACocina;
+use App\Events\ComandaEstadoActualizado;
+use App\Events\ComandaLista;
 use App\Events\ComandaModificada;
 use App\Http\Requests\Order\CancelOrderRequest;
 use App\Http\Requests\Order\CreateOrderRequest;
 use App\Http\Requests\Order\ModifyOrderRequest;
+use App\Http\Requests\Order\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrderStatusResource;
 use App\Http\Resources\OrderTypeResource;
@@ -998,6 +1001,339 @@ class OrderController extends Controller
             'message' => 'Comanda modificada exitosamente y enviada a cocina.',
             'order' => new OrderResource($result),
         ], 200);
+    }
+
+    #[OA\Patch(
+        path: '/api/orders/{id}/status',
+        operationId: 'updateOrderStatus',
+        description: 'Actualiza el estado de avance de una comanda siguiendo el ciclo válido: pendiente -> en_preparacion -> lista -> entregada. Al pasar a "en_preparacion" se registra automáticamente la fecha y hora de inicio de preparación (preparation_start_time). Al pasar a "lista" se notifica al mesero/cajero. No se permiten saltos hacia atrás ni saltos dobles. Emite el evento ComandaEstadoActualizado (y ComandaLista si aplica) en tiempo real por el canal private-cocina.',
+        summary: 'Actualizar estado del ciclo de vida de la comanda',
+        security: [['bearerAuth' => []]],
+        tags: ['Comandas y Pedidos'],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                description: 'ID de la comanda a actualizar',
+                required: true,
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            description: 'Nuevo estado deseado para la comanda',
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/UpdateOrderStatusRequest')
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Estado de la comanda actualizado exitosamente.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: "Estado de la comanda actualizado exitosamente a 'en_preparacion'."),
+                        new OA\Property(property: 'order', ref: '#/components/schemas/OrderResource'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Comanda no encontrada.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Comanda no encontrada.')]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Transición de estado no válida (salto hacia atrás o comanda finalizada/cancelada).',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: "No se puede marcar como 'lista' una comanda que se encuentra en estado 'pendiente'. Debe pasar primero por 'en_preparacion'.")]
+                )
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'No autorizado. Se requiere rol de Cocinero, Mesero/Cajero o Administrador.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'No tienes permisos para cambiar el estado de la comanda. Se requiere rol de Cocinero, Mesero/Cajero o Administrador.')]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'No autenticado.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Unauthenticated.')]
+                )
+            ),
+        ]
+    )]
+    public function updateStatus(UpdateOrderStatusRequest $request, int $id): JsonResponse
+    {
+        $targetStatusName = $request->getResolvedStatusName();
+
+        $result = DB::transaction(function () use ($id, $targetStatusName) {
+            $order = Order::query()
+                ->with(['status', 'restaurantTable.status', 'items.status', 'waiter.role'])
+                ->lockForUpdate()
+                ->find($id);
+
+            if (! $order) {
+                return response()->json([
+                    'message' => 'Comanda no encontrada.',
+                ], 404);
+            }
+
+            $currentStatusName = $order->status?->name;
+
+            // Idempotencia: si ya tiene el estado solicitado, retornar 200 sin error
+            if ($currentStatusName === $targetStatusName) {
+                return response()->json([
+                    'message' => "La comanda ya se encuentra en estado '{$targetStatusName}'.",
+                    'order' => new OrderResource($order),
+                ], 200);
+            }
+
+            // Regla de estados finales
+            if ($currentStatusName === OrderStatus::CANCELADA) {
+                return response()->json([
+                    'message' => 'No se puede modificar el estado de una comanda cancelada.',
+                ], 422);
+            }
+
+            if ($currentStatusName === OrderStatus::ENTREGADA) {
+                return response()->json([
+                    'message' => 'La comanda ya fue entregada y su ciclo de preparación ha finalizado.',
+                ], 422);
+            }
+
+            // Transiciones válidas:
+            // pendiente -> en_preparacion
+            // en_preparacion -> lista
+            // lista -> entregada
+
+            if ($targetStatusName === OrderStatus::EN_PREPARACION) {
+                if ($currentStatusName !== OrderStatus::PENDIENTE) {
+                    return response()->json([
+                        'message' => "No se puede pasar a 'en_preparacion' una comanda que se encuentra en estado '{$currentStatusName}'.",
+                    ], 422);
+                }
+
+                $newStatus = OrderStatus::query()->where('name', OrderStatus::EN_PREPARACION)->firstOrFail();
+                $order->order_status_id = $newStatus->id;
+                $order->preparation_start_time = now();
+                $order->save();
+
+                // Actualizar platillos activos con estado pendiente a en_preparacion
+                $itemInPrepStatus = OrderItemStatus::query()->where('name', OrderItemStatus::EN_PREPARACION)->firstOrFail();
+                $itemPendingStatus = OrderItemStatus::query()->where('name', OrderItemStatus::PENDIENTE)->firstOrFail();
+
+                $order->items()
+                    ->where('order_item_status_id', $itemPendingStatus->id)
+                    ->update(['order_item_status_id' => $itemInPrepStatus->id]);
+            } elseif ($targetStatusName === OrderStatus::LISTA) {
+                if ($currentStatusName === OrderStatus::PENDIENTE) {
+                    return response()->json([
+                        'message' => "La comanda debe pasar primero por el estado 'en_preparacion' antes de marcarse como 'lista'.",
+                    ], 422);
+                }
+
+                if ($currentStatusName !== OrderStatus::EN_PREPARACION) {
+                    return response()->json([
+                        'message' => "No se puede marcar como 'lista' una comanda que se encuentra en estado '{$currentStatusName}'.",
+                    ], 422);
+                }
+
+                $newStatus = OrderStatus::query()->where('name', OrderStatus::LISTA)->firstOrFail();
+                $order->order_status_id = $newStatus->id;
+                $order->save();
+
+                // Actualizar platillos activos a listo
+                $itemReadyStatus = OrderItemStatus::query()->where('name', OrderItemStatus::LISTO)->firstOrFail();
+                $activeItemStatusIds = OrderItemStatus::query()
+                    ->whereIn('name', [OrderItemStatus::PENDIENTE, OrderItemStatus::EN_PREPARACION])
+                    ->pluck('id')
+                    ->toArray();
+
+                $order->items()
+                    ->whereIn('order_item_status_id', $activeItemStatusIds)
+                    ->update(['order_item_status_id' => $itemReadyStatus->id]);
+            } elseif ($targetStatusName === OrderStatus::ENTREGADA) {
+                if ($currentStatusName === OrderStatus::PENDIENTE || $currentStatusName === OrderStatus::EN_PREPARACION) {
+                    return response()->json([
+                        'message' => "La comanda debe estar en estado 'lista' antes de poder entregarse.",
+                    ], 422);
+                }
+
+                $newStatus = OrderStatus::query()->where('name', OrderStatus::ENTREGADA)->firstOrFail();
+                $order->order_status_id = $newStatus->id;
+                $order->save();
+
+                // Si tenía mesa asignada y se entrega, liberar mesa
+                if ($order->restaurant_table_id) {
+                    $table = RestaurantTable::query()->lockForUpdate()->find($order->restaurant_table_id);
+                    if ($table) {
+                        $availableTableStatus = TableStatus::query()->where('name', TableStatus::DISPONIBLE)->firstOrFail();
+                        $table->table_status_id = $availableTableStatus->id;
+                        $table->save();
+                    }
+                }
+            } else {
+                return response()->json([
+                    'message' => "Transición no permitida hacia el estado '{$targetStatusName}'.",
+                ], 422);
+            }
+
+            return [
+                'order' => $order,
+                'previous_status' => $currentStatusName,
+                'new_status' => $targetStatusName,
+            ];
+        });
+
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        $order = $result['order'];
+        $previousStatus = $result['previous_status'];
+        $newStatus = $result['new_status'];
+
+        $order->load([
+            'restaurantTable.status',
+            'waiter.role',
+            'type',
+            'status',
+            'items.dish.category',
+            'items.status',
+            'items.complements.complement',
+        ]);
+
+        // Emitir evento general de cambio de estado a cocina y sala
+        broadcast(new ComandaEstadoActualizado($order, $previousStatus, $newStatus));
+
+        // Si pasó a 'lista', emitir evento específico para alertar a mesero y sala
+        if ($newStatus === OrderStatus::LISTA) {
+            broadcast(new ComandaLista($order));
+        }
+
+        return response()->json([
+            'message' => "Estado de la comanda actualizado exitosamente a '{$newStatus}'.",
+            'order' => new OrderResource($order),
+        ], 200);
+    }
+
+    #[OA\Post(
+        path: '/api/orders/{id}/start-preparation',
+        operationId: 'startOrderPreparation',
+        description: 'Acceso directo para marcar una comanda en estado pendiente como "en_preparacion" y registrar preparation_start_time.',
+        summary: 'Marcar comanda en preparación',
+        security: [['bearerAuth' => []]],
+        tags: ['Comandas y Pedidos'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', description: 'ID de la comanda', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Comanda marcada en preparación exitosamente.'),
+            new OA\Response(response: 422, description: 'La comanda no está en estado pendiente.'),
+            new OA\Response(response: 403, description: 'No autorizado.'),
+            new OA\Response(response: 404, description: 'Comanda no encontrada.'),
+        ]
+    )]
+    public function startPreparation(Request $request, int $id): JsonResponse
+    {
+        $updateRequest = UpdateOrderStatusRequest::createFrom($request);
+        $updateRequest->merge(['status' => OrderStatus::EN_PREPARACION]);
+        $updateRequest->setUserResolver($request->getUserResolver());
+
+        if (! $updateRequest->authorize()) {
+            return response()->json([
+                'message' => 'No tienes permisos para cambiar el estado de la comanda. Se requiere rol de Cocinero, Mesero/Cajero o Administrador.',
+            ], 403);
+        }
+
+        return $this->updateStatus($updateRequest, $id);
+    }
+
+    #[OA\Post(
+        path: '/api/orders/{id}/ready',
+        operationId: 'markOrderAsReady',
+        description: 'Acceso directo para marcar una comanda en preparación como "lista" y alertar en tiempo real al mesero/cajero.',
+        summary: 'Marcar comanda como lista',
+        security: [['bearerAuth' => []]],
+        tags: ['Comandas y Pedidos'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', description: 'ID de la comanda', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Comanda marcada como lista exitosamente.'),
+            new OA\Response(response: 422, description: 'La comanda no está en preparación.'),
+            new OA\Response(response: 403, description: 'No autorizado.'),
+            new OA\Response(response: 404, description: 'Comanda no encontrada.'),
+        ]
+    )]
+    public function markAsReady(Request $request, int $id): JsonResponse
+    {
+        $updateRequest = UpdateOrderStatusRequest::createFrom($request);
+        $updateRequest->merge(['status' => OrderStatus::LISTA]);
+        $updateRequest->setUserResolver($request->getUserResolver());
+
+        if (! $updateRequest->authorize()) {
+            return response()->json([
+                'message' => 'No tienes permisos para cambiar el estado de la comanda. Se requiere rol de Cocinero, Mesero/Cajero o Administrador.',
+            ], 403);
+        }
+
+        return $this->updateStatus($updateRequest, $id);
+    }
+
+    #[OA\Get(
+        path: '/api/kitchen/orders',
+        operationId: 'listKitchenOrders',
+        description: 'Obtiene las comandas activas pendientes y en preparación para la pantalla de cocina (KDS), ordenadas cronológicamente para facilitar la atención prioritaria.',
+        summary: 'Listar comandas para pantalla de cocina',
+        security: [['bearerAuth' => []]],
+        tags: ['Comandas y Pedidos'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Listado de comandas para cocina obtenido exitosamente.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'data', type: 'array', items: new OA\Items(ref: '#/components/schemas/OrderResource')),
+                        new OA\Property(property: 'total', type: 'integer', example: 5),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'No autenticado.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Unauthenticated.')]
+                )
+            ),
+        ]
+    )]
+    public function kitchenOrders(): JsonResponse
+    {
+        $orders = Order::query()
+            ->with([
+                'restaurantTable.status',
+                'waiter.role',
+                'type',
+                'status',
+                'items.dish.category',
+                'items.status',
+                'items.complements.complement',
+            ])
+            ->whereHas('status', function ($q) {
+                $q->whereIn('name', [OrderStatus::PENDIENTE, OrderStatus::EN_PREPARACION]);
+            })
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return response()->json([
+            'data' => OrderResource::collection($orders),
+            'total' => $orders->count(),
+        ]);
     }
 
     #[OA\Get(
