@@ -77,4 +77,16 @@ class Dish extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    /**
+     * Check if the dish has active orders (in status 'pendiente' or 'en_preparacion').
+     */
+    public function hasActiveOrders(): bool
+    {
+        return $this->orderItems()
+            ->whereHas('order.status', function ($query) {
+                $query->whereIn('name', [OrderStatus::PENDIENTE, OrderStatus::EN_PREPARACION]);
+            })
+            ->exists();
+    }
 }
