@@ -2158,6 +2158,52 @@
                 ]
             }
         },
+        "/api/measurement-units": {
+            "get": {
+                "tags": [
+                    "Gestión de Insumos"
+                ],
+                "summary": "Listar unidades de medida",
+                "description": "Obtiene el listado completo de unidades de medida registradas en el sistema (kilogramo, gramo, litro, unidad, etc.).",
+                "operationId": "listMeasurementUnits",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de unidades de medida obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/MeasurementUnitResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/ping": {
             "get": {
                 "tags": [
@@ -2230,6 +2276,606 @@
                     },
                     "403": {
                         "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/supplies": {
+            "get": {
+                "tags": [
+                    "Gestión de Insumos"
+                ],
+                "summary": "Listar productos e insumos de almacén",
+                "description": "Obtiene el listado paginado de productos e insumos registrados en el almacén, permitiendo filtrar por búsqueda (código o nombre), unidad de medida, estado de activación y alerta de stock bajo.",
+                "operationId": "listSupplies",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por código o nombre del insumo",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "measurement_unit_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de unidad de medida",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Filtrar por estado activo/inactivo",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "low_stock",
+                        "in": "query",
+                        "description": "Filtrar solo insumos con stock menor o igual al mínimo de referencia",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de insumos obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SupplyResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 25
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 2
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Insumos"
+                ],
+                "summary": "Registrar un nuevo producto o insumo",
+                "description": "Registra un nuevo producto o insumo en el almacén con su unidad de medida, cantidad de referencia mínima y costo unitario. La existencia inicial se establece en 0 y solo se modifica mediante movimientos de inventario.",
+                "operationId": "createSupply",
+                "requestBody": {
+                    "description": "Datos del nuevo insumo",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSupplyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Insumo registrado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo registrado exitosamente."
+                                        },
+                                        "supply": {
+                                            "$ref": "#/components/schemas/SupplyResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (código duplicado, cantidad negativa, etc.).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La cantidad de referencia debe ser un valor positivo mayor a 0."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/supplies/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Insumos"
+                ],
+                "summary": "Consultar información de un insumo",
+                "description": "Obtiene el detalle completo de un insumo o producto específico.",
+                "operationId": "getSupply",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del insumo a consultar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Insumo obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SupplyResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Insumo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Gestión de Insumos"
+                ],
+                "summary": "Actualizar un producto o insumo",
+                "description": "Actualiza los datos descriptivos, unidad de medida, cantidad de referencia y costo de un insumo sin alterar su existencia física actual ni su historial de movimientos.",
+                "operationId": "updateSupply",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del insumo a modificar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos actualizados del insumo",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSupplyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Insumo actualizado exitosamente sin alterar su historial.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo actualizado exitosamente."
+                                        },
+                                        "supply": {
+                                            "$ref": "#/components/schemas/SupplyResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación en campos o cantidades.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La cantidad de referencia debe ser un valor positivo mayor a 0."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Insumo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Insumos"
+                ],
+                "summary": "Desactivar un insumo (baja lógica)",
+                "description": "Desactiva un producto o insumo mediante baja lógica (is_active = false) sin eliminar su historial de movimientos, compras ni alertas.",
+                "operationId": "deleteSupply",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del insumo a desactivar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Insumo desactivado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Insumo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/supplies/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Insumos"
+                ],
+                "summary": "Cambiar estado de activación del insumo",
+                "description": "Activa o desactiva la disponibilidad de un insumo para compras, recetas y movimientos.",
+                "operationId": "toggleSupplyStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del insumo",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Nuevo estado de activación",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToggleSupplyStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo activado exitosamente."
+                                        },
+                                        "supply": {
+                                            "$ref": "#/components/schemas/SupplyResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Insumo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Insumo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3469,6 +4115,136 @@
                     ]
                 }
             },
+            "CreateSupplyRequest": {
+                "title": "Create Supply Request",
+                "description": "Datos necesarios para dar de alta un producto o insumo en el inventario",
+                "required": [
+                    "name",
+                    "measurement_unit_id",
+                    "minimum_stock",
+                    "unit_cost"
+                ],
+                "properties": {
+                    "code": {
+                        "description": "Código único opcional (se genera automáticamente si se omite)",
+                        "type": "string",
+                        "example": "INS-0001",
+                        "nullable": true,
+                        "maxLength": 50
+                    },
+                    "name": {
+                        "description": "Nombre descriptivo del producto o insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo Fresca",
+                        "maxLength": 150
+                    },
+                    "measurement_unit_id": {
+                        "description": "ID de la unidad de medida",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "minimum_stock": {
+                        "description": "Cantidad de referencia mínima requerida en almacén (mayor a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 15
+                    },
+                    "unit_cost": {
+                        "description": "Costo unitario de adquisición (mayor o igual a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 35
+                    },
+                    "is_active": {
+                        "description": "Estado inicial del insumo",
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "code": "INS-0001",
+                    "name": "Pechuga de Pollo Fresca",
+                    "measurement_unit_id": 1,
+                    "minimum_stock": 15,
+                    "unit_cost": 35,
+                    "is_active": true
+                }
+            },
+            "ToggleSupplyStatusRequest": {
+                "title": "Toggle Supply Status Request",
+                "description": "Datos requeridos para activar o desactivar la disponibilidad de un insumo",
+                "required": [
+                    "is_active"
+                ],
+                "properties": {
+                    "is_active": {
+                        "description": "Nuevo estado de activación del insumo",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "is_active": false
+                }
+            },
+            "UpdateSupplyRequest": {
+                "title": "Update Supply Request",
+                "description": "Datos permitidos para modificar un producto o insumo existente sin alterar su existencia física ni su historial",
+                "required": [
+                    "name",
+                    "measurement_unit_id",
+                    "minimum_stock",
+                    "unit_cost"
+                ],
+                "properties": {
+                    "code": {
+                        "description": "Código único de identificación",
+                        "type": "string",
+                        "example": "INS-0001",
+                        "nullable": true,
+                        "maxLength": 50
+                    },
+                    "name": {
+                        "description": "Nombre descriptivo del producto o insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo Fresca Especial",
+                        "maxLength": 150
+                    },
+                    "measurement_unit_id": {
+                        "description": "ID de la unidad de medida",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "minimum_stock": {
+                        "description": "Cantidad de referencia mínima requerida en almacén (mayor a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 20
+                    },
+                    "unit_cost": {
+                        "description": "Costo unitario de adquisición (mayor o igual a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 38
+                    },
+                    "is_active": {
+                        "description": "Estado de disponibilidad del insumo",
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "code": "INS-0001",
+                    "name": "Pechuga de Pollo Fresca Especial",
+                    "measurement_unit_id": 1,
+                    "minimum_stock": 20,
+                    "unit_cost": 38,
+                    "is_active": true
+                }
+            },
             "CreateUserRequest": {
                 "title": "Create User Request",
                 "description": "Datos necesarios para registrar un nuevo usuario en el sistema",
@@ -3777,6 +4553,98 @@
                 },
                 "type": "object"
             },
+            "MeasurementUnitResource": {
+                "title": "Measurement Unit Resource",
+                "description": "Unidad de medida para insumos y recetas",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único de la unidad de medida",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre completo de la unidad de medida",
+                        "type": "string",
+                        "example": "Kilogramo"
+                    },
+                    "abbreviation": {
+                        "description": "Símbolo o abreviatura de la unidad",
+                        "type": "string",
+                        "example": "kg"
+                    }
+                },
+                "type": "object"
+            },
+            "SupplyResource": {
+                "title": "Supply Resource",
+                "description": "Información completa del producto o insumo de almacén",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del insumo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "code": {
+                        "description": "Código único de identificación del insumo",
+                        "type": "string",
+                        "example": "INS-0001"
+                    },
+                    "name": {
+                        "description": "Nombre descriptivo del insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo"
+                    },
+                    "measurement_unit_id": {
+                        "description": "ID de la unidad de medida",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "measurement_unit": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/MeasurementUnitResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "current_stock": {
+                        "description": "Existencia actual en inventario físico",
+                        "type": "number",
+                        "format": "float",
+                        "example": 45.5
+                    },
+                    "minimum_stock": {
+                        "description": "Cantidad de referencia mínima requerida en almacén",
+                        "type": "number",
+                        "format": "float",
+                        "example": 10
+                    },
+                    "unit_cost": {
+                        "description": "Costo unitario de adquisición",
+                        "type": "number",
+                        "format": "float",
+                        "example": 32.5
+                    },
+                    "is_active": {
+                        "description": "Estado de disponibilidad del insumo",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "is_low_stock": {
+                        "description": "Indica si la existencia actual está por debajo o igual al stock mínimo",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "created_at": {
+                        "description": "Fecha y hora de creación del registro",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "UserRole": {
                 "title": "User Role",
                 "description": "Rol del usuario dentro del sistema",
@@ -3860,6 +4728,10 @@
         {
             "name": "Menú del Día",
             "description": "Menú del Día"
+        },
+        {
+            "name": "Gestión de Insumos",
+            "description": "Gestión de Insumos"
         },
         {
             "name": "Gestión de Usuarios",
