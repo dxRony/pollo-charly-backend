@@ -45,6 +45,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user has one of the specified roles.
+     */
+    public function hasRole(string ...$roles): bool
+    {
+        return $this->role !== null && in_array($this->role->name, $roles, true);
+    }
+
+    /**
+     * Check if the user is an administrator.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(Role::ADMINISTRADOR);
+    }
+
+    /**
      * @return HasMany<Order, $this>
      */
     public function orders(): HasMany

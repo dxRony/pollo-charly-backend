@@ -4,6 +4,8 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PingController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', PingController::class);
@@ -25,6 +27,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/status', [TwoFactorController::class, 'status']);
         Route::post('/enable', [TwoFactorController::class, 'enable']);
         Route::post('/disable', [TwoFactorController::class, 'disable']);
+    });
+
+    Route::middleware('role:Administrador')->group(function () {
+        Route::get('/roles', [RoleController::class, 'index']);
+        Route::apiResource('users', UserController::class);
+        Route::patch('/users/{user}/status', [UserController::class, 'toggleStatus']);
     });
 });
 

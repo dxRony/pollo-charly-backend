@@ -648,6 +648,723 @@
                     }
                 }
             }
+        },
+        "/api/roles": {
+            "get": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Listar roles del sistema",
+                "description": "Obtiene el listado completo de roles disponibles en el sistema para la asignación a usuarios.",
+                "operationId": "listRoles",
+                "responses": {
+                    "200": {
+                        "description": "Listado de roles obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UserRole"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/users": {
+            "get": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Listar usuarios (paginado y con filtros)",
+                "description": "Obtiene el listado paginado de usuarios registrados en el sistema, permitiendo filtrar por búsqueda (nombre o correo), rol y estado de activación.",
+                "operationId": "listUsers",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Término de búsqueda por nombre o correo",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "role_id",
+                        "in": "query",
+                        "description": "Filtrar por identificador de rol",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Filtrar por estado activo (true/1) o inactivo (false/0)",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de usuarios obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/UserResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Registrar un nuevo usuario",
+                "description": "Registra un nuevo usuario con nombre, correo, rol y contraseña inicial. La cuenta se crea activa por defecto.",
+                "operationId": "createUser",
+                "requestBody": {
+                    "description": "Datos del nuevo usuario",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateUserRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Usuario registrado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario registrado exitosamente."
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (correo duplicado, contraseña corta, etc.).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El correo electrónico ya está registrado en el sistema."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/users/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Consultar información de un usuario",
+                "description": "Obtiene el detalle completo de un usuario específico.",
+                "operationId": "getUser",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del usuario a consultar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Información del usuario obtenida exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Actualizar un usuario",
+                "description": "Actualiza los datos de un usuario existente (nombre, correo, rol y opcionalmente contraseña).",
+                "operationId": "updateUser",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del usuario a modificar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos actualizados del usuario",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUserRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Usuario actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario actualizado exitosamente."
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación o intento de autodesactivación.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El correo electrónico ya está registrado por otro usuario."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Desactivar un usuario (baja lógica)",
+                "description": "Realiza una baja lógica del usuario (establece is_active = false y revoca sus tokens activos) sin eliminar su historial de operaciones asociadas.",
+                "operationId": "deleteUser",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del usuario a desactivar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usuario desactivado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Intento de autodesactivación de la cuenta administradora.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No puedes desactivar tu propia cuenta de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/users/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Cambiar estado de activación del usuario",
+                "description": "Activa o desactiva la cuenta de un usuario según el valor booleano provisto.",
+                "operationId": "toggleUserStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Nuevo estado de activación",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToggleUserStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario activado exitosamente."
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Intento de autodesactivación de la cuenta administradora.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No puedes desactivar tu propia cuenta de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -787,6 +1504,118 @@
                     "code": "123456"
                 }
             },
+            "CreateUserRequest": {
+                "title": "Create User Request",
+                "description": "Datos necesarios para registrar un nuevo usuario en el sistema",
+                "required": [
+                    "name",
+                    "email",
+                    "password",
+                    "role_id"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre completo del trabajador",
+                        "type": "string",
+                        "example": "Carlos Mesero"
+                    },
+                    "email": {
+                        "description": "Correo electrónico único corporativo o personal",
+                        "type": "string",
+                        "format": "email",
+                        "example": "nuevo.mesero@pollocharly.com"
+                    },
+                    "password": {
+                        "description": "Contraseña inicial de acceso (mínimo 8 caracteres)",
+                        "type": "string",
+                        "format": "password",
+                        "example": "temporal123"
+                    },
+                    "role_id": {
+                        "description": "Identificador del rol a asignar (1: Administrador, 2: Mesero/Cajero, 3: Cocinero)",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "is_active": {
+                        "description": "Estado inicial de la cuenta (por defecto true)",
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Carlos Mesero",
+                    "email": "nuevo.mesero@pollocharly.com",
+                    "password": "temporal123",
+                    "role_id": 2,
+                    "is_active": true
+                }
+            },
+            "ToggleUserStatusRequest": {
+                "title": "Toggle User Status Request",
+                "description": "Datos requeridos para activar o desactivar la cuenta de un usuario",
+                "required": [
+                    "is_active"
+                ],
+                "properties": {
+                    "is_active": {
+                        "description": "Nuevo estado de activación de la cuenta",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "is_active": false
+                }
+            },
+            "UpdateUserRequest": {
+                "title": "Update User Request",
+                "description": "Datos permitidos para modificar un usuario existente",
+                "required": [
+                    "name",
+                    "email",
+                    "role_id"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre completo del trabajador",
+                        "type": "string",
+                        "example": "Carlos Alberto Mesero"
+                    },
+                    "email": {
+                        "description": "Correo electrónico único corporativo o personal",
+                        "type": "string",
+                        "format": "email",
+                        "example": "carlos.mesero@pollocharly.com"
+                    },
+                    "password": {
+                        "description": "Nueva contraseña (opcional, mínimo 8 caracteres)",
+                        "type": "string",
+                        "format": "password",
+                        "example": "nuevaPassword123",
+                        "nullable": true
+                    },
+                    "role_id": {
+                        "description": "Identificador del rol a asignar",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "is_active": {
+                        "description": "Estado de la cuenta",
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Carlos Alberto Mesero",
+                    "email": "carlos.mesero@pollocharly.com",
+                    "password": "nuevaPassword123",
+                    "role_id": 2,
+                    "is_active": true
+                }
+            },
             "UserRole": {
                 "title": "User Role",
                 "description": "Rol del usuario dentro del sistema",
@@ -804,7 +1633,7 @@
             },
             "UserResource": {
                 "title": "User Resource",
-                "description": "Datos del usuario autenticado",
+                "description": "Datos del usuario",
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -819,8 +1648,27 @@
                         "format": "email",
                         "example": "admin@pollocharly.com"
                     },
+                    "is_active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "two_factor_enabled": {
+                        "type": "boolean",
+                        "example": false
+                    },
                     "role": {
-                        "$ref": "#/components/schemas/UserRole"
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRole"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -843,6 +1691,10 @@
         {
             "name": "General",
             "description": "Endpoints generales de diagnóstico y verificación de salud de la API"
+        },
+        {
+            "name": "Gestión de Usuarios",
+            "description": "Gestión de Usuarios"
         }
     ]
 }
