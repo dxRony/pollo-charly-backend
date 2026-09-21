@@ -64,10 +64,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/order-types', [OrderController::class, 'types']);
     Route::get('/restaurant-tables', [OrderController::class, 'tables']);
     Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/kitchen/orders', [OrderController::class, 'kitchenOrders']);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::put('/orders/{id}', [OrderController::class, 'update']);
     Route::patch('/orders/{id}', [OrderController::class, 'update']);
+    Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
+    Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus']);
+    Route::post('/orders/{id}/start-preparation', [OrderController::class, 'startPreparation']);
+    Route::post('/orders/{id}/ready', [OrderController::class, 'markAsReady']);
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
 
     Route::middleware('role:Administrador')->group(function () {

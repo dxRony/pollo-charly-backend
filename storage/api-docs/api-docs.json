@@ -3325,6 +3325,263 @@
                 ]
             }
         },
+        "/api/orders/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Actualizar estado del ciclo de vida de la comanda",
+                "description": "Actualiza el estado de avance de una comanda siguiendo el ciclo válido: pendiente -> en_preparacion -> lista -> entregada. Al pasar a \"en_preparacion\" se registra automáticamente la fecha y hora de inicio de preparación (preparation_start_time). Al pasar a \"lista\" se notifica al mesero/cajero. No se permiten saltos hacia atrás ni saltos dobles. Emite el evento ComandaEstadoActualizado (y ComandaLista si aplica) en tiempo real por el canal private-cocina.",
+                "operationId": "updateOrderStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la comanda a actualizar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Nuevo estado deseado para la comanda",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateOrderStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado de la comanda actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Estado de la comanda actualizado exitosamente a 'en_preparacion'."
+                                        },
+                                        "order": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Comanda no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Comanda no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Transición de estado no válida (salto hacia atrás o comanda finalizada/cancelada).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede marcar como 'lista' una comanda que se encuentra en estado 'pendiente'. Debe pasar primero por 'en_preparacion'."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Cocinero, Mesero/Cajero o Administrador.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para cambiar el estado de la comanda. Se requiere rol de Cocinero, Mesero/Cajero o Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/{id}/start-preparation": {
+            "post": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Marcar comanda en preparación",
+                "description": "Acceso directo para marcar una comanda en estado pendiente como \"en_preparacion\" y registrar preparation_start_time.",
+                "operationId": "startOrderPreparation",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la comanda",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Comanda marcada en preparación exitosamente."
+                    },
+                    "422": {
+                        "description": "La comanda no está en estado pendiente."
+                    },
+                    "403": {
+                        "description": "No autorizado."
+                    },
+                    "404": {
+                        "description": "Comanda no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/{id}/ready": {
+            "post": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Marcar comanda como lista",
+                "description": "Acceso directo para marcar una comanda en preparación como \"lista\" y alertar en tiempo real al mesero/cajero.",
+                "operationId": "markOrderAsReady",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la comanda",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Comanda marcada como lista exitosamente."
+                    },
+                    "422": {
+                        "description": "La comanda no está en preparación."
+                    },
+                    "403": {
+                        "description": "No autorizado."
+                    },
+                    "404": {
+                        "description": "Comanda no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/kitchen/orders": {
+            "get": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Listar comandas para pantalla de cocina",
+                "description": "Obtiene las comandas activas pendientes y en preparación para la pantalla de cocina (KDS), ordenadas cronológicamente para facilitar la atención prioritaria.",
+                "operationId": "listKitchenOrders",
+                "responses": {
+                    "200": {
+                        "description": "Listado de comandas para cocina obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/OrderResource"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/order-statuses": {
             "get": {
                 "tags": [
@@ -6181,6 +6438,32 @@
                         "items": {
                             "$ref": "#/components/schemas/CreateOrderItem"
                         },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateOrderStatusRequest": {
+                "title": "Update Order Status Request",
+                "description": "Datos requeridos para actualizar el estado del ciclo de vida de una comanda",
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "status": {
+                        "description": "Nombre clave del nuevo estado deseado: en_preparacion, lista o entregada",
+                        "type": "string",
+                        "example": "en_preparacion",
+                        "enum": [
+                            "en_preparacion",
+                            "lista",
+                            "entregada"
+                        ]
+                    },
+                    "order_status_id": {
+                        "description": "Identificador del estado en la base de datos (alternativa a status)",
+                        "type": "integer",
+                        "example": 2,
                         "nullable": true
                     }
                 },
