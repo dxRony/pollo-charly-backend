@@ -617,6 +617,684 @@
                 ]
             }
         },
+        "/api/categories": {
+            "get": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Listar categorías de platillos",
+                "description": "Obtiene el listado de categorías disponibles para clasificar platillos en el menú.",
+                "operationId": "listCategories",
+                "responses": {
+                    "200": {
+                        "description": "Listado de categorías obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CategoryResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dishes": {
+            "get": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Listar platillos del menú",
+                "description": "Obtiene el listado paginado de platillos registrados, permitiendo filtrar por búsqueda de texto, categoría, menú del día y estado activo.",
+                "operationId": "listDishes",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por nombre o descripción",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de categoría",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Filtrar por estado activo/inactivo",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "is_daily_menu",
+                        "in": "query",
+                        "description": "Filtrar platillos del menú del día",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de platillos obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DishResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Crear un nuevo platillo con receta y complementos",
+                "description": "Registra un nuevo platillo en el menú, definiendo opcionalmente su receta de insumos con cantidades por porción y su lista de complementos aplicables.",
+                "operationId": "createDish",
+                "requestBody": {
+                    "description": "Datos del nuevo platillo",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateDishRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Platillo registrado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo registrado exitosamente junto con su receta y complementos."
+                                        },
+                                        "dish": {
+                                            "$ref": "#/components/schemas/DishResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (nombre duplicado, precio inválido, etc.).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El nombre del platillo ya existe."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dishes/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Consultar información de un platillo",
+                "description": "Obtiene el detalle completo de un platillo, incluyendo sus insumos de receta y complementos.",
+                "operationId": "getDish",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del platillo",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Platillo obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DishResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Platillo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Actualizar un platillo existente",
+                "description": "Actualiza los datos básicos, receta y complementos asociados de un platillo existente.",
+                "operationId": "updateDish",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del platillo a modificar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos modificados del platillo",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDishRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Platillo actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo actualizado exitosamente."
+                                        },
+                                        "dish": {
+                                            "$ref": "#/components/schemas/DishResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (nombre duplicado, precio inválido, etc.).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El nombre del platillo ya existe."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Platillo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Desactivar un platillo del menú (baja lógica)",
+                "description": "Desactiva un platillo del menú mediante baja lógica (is_active = false) siempre y cuando no existan comandas activas (en estado pendiente o en preparación) asociadas.",
+                "operationId": "deleteDish",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del platillo a desactivar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Platillo desactivado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "El platillo tiene comandas activas en preparación o pendientes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede desactivar el platillo porque tiene comandas activas (pendientes o en preparación)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Platillo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dishes/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Cambiar estado de disponibilidad del platillo",
+                "description": "Activa o desactiva la disponibilidad de un platillo en el menú. Si se intenta desactivar, valida que no tenga comandas activas pendientes o en preparación.",
+                "operationId": "toggleDishStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del platillo",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Nuevo estado de activación",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToggleDishStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo activado exitosamente en el menú."
+                                        },
+                                        "dish": {
+                                            "$ref": "#/components/schemas/DishResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "No se puede desactivar debido a comandas activas.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede desactivar el platillo porque tiene comandas activas (pendientes o en preparación)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Platillo no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Platillo no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/ping": {
             "get": {
                 "tags": [
@@ -1369,6 +2047,30 @@
     },
     "components": {
         "schemas": {
+            "CategoryResource": {
+                "title": "Category Resource",
+                "description": "Categoría de platillos del menú",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Pollos"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Piezas individuales, medios pollos y pollos enteros",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
             "ForgotPasswordRequest": {
                 "title": "Forgot Password Request",
                 "description": "Correo electrónico para solicitar el enlace o token de recuperación",
@@ -1504,6 +2206,218 @@
                     "code": "123456"
                 }
             },
+            "CreateDishRecipeItemInput": {
+                "title": "Create Dish Recipe Item Input",
+                "required": [
+                    "supply_id",
+                    "required_quantity"
+                ],
+                "properties": {
+                    "supply_id": {
+                        "description": "ID del insumo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "required_quantity": {
+                        "description": "Cantidad requerida por porción (mayor a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.5
+                    }
+                },
+                "type": "object"
+            },
+            "CreateDishRequest": {
+                "title": "Create Dish Request",
+                "description": "Datos para registrar un nuevo platillo junto con su receta y complementos asociados",
+                "required": [
+                    "name",
+                    "category_id",
+                    "price"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre único del platillo",
+                        "type": "string",
+                        "example": "Pollo Frito Familiar",
+                        "maxLength": 150
+                    },
+                    "category_id": {
+                        "description": "ID de la categoría a la que pertenece",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "description": {
+                        "description": "Descripción detallada del platillo",
+                        "type": "string",
+                        "example": "8 piezas crujientes de pollo",
+                        "nullable": true
+                    },
+                    "price": {
+                        "description": "Precio de venta (mayor a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 125
+                    },
+                    "image_url": {
+                        "description": "URL de la imagen del platillo",
+                        "type": "string",
+                        "example": "https://cdn.pollocharly.com/dishes/familiar.jpg",
+                        "nullable": true
+                    },
+                    "is_daily_menu": {
+                        "description": "Indica si forma parte del menú del día",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "is_active": {
+                        "description": "Estado inicial del platillo",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "recipes": {
+                        "description": "Lista de insumos y cantidades requeridas por porción",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CreateDishRecipeItemInput"
+                        }
+                    },
+                    "complements": {
+                        "description": "IDs de complementos aplicables al platillo",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Pollo Frito Familiar",
+                    "category_id": 1,
+                    "description": "8 piezas crujientes de pollo acompañadas de papas",
+                    "price": 125,
+                    "image_url": "https://cdn.pollocharly.com/dishes/familiar.jpg",
+                    "is_daily_menu": false,
+                    "is_active": true,
+                    "recipes": [
+                        {
+                            "supply_id": 1,
+                            "required_quantity": 1.5
+                        },
+                        {
+                            "supply_id": 2,
+                            "required_quantity": 0.25
+                        }
+                    ],
+                    "complements": [
+                        1,
+                        2
+                    ]
+                }
+            },
+            "ToggleDishStatusRequest": {
+                "title": "Toggle Dish Status Request",
+                "description": "Datos requeridos para activar o desactivar un platillo en el menú",
+                "required": [
+                    "is_active"
+                ],
+                "properties": {
+                    "is_active": {
+                        "description": "Nuevo estado de disponibilidad del platillo",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "is_active": false
+                }
+            },
+            "UpdateDishRequest": {
+                "title": "Update Dish Request",
+                "description": "Datos para actualizar un platillo existente, su receta y complementos asociados",
+                "required": [
+                    "name",
+                    "category_id",
+                    "price"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre único del platillo",
+                        "type": "string",
+                        "example": "Pollo Frito Familiar Especial",
+                        "maxLength": 150
+                    },
+                    "category_id": {
+                        "description": "ID de la categoría a la que pertenece",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "description": {
+                        "description": "Descripción detallada del platillo",
+                        "type": "string",
+                        "example": "8 piezas crujientes de pollo",
+                        "nullable": true
+                    },
+                    "price": {
+                        "description": "Precio de venta (mayor a 0)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 135
+                    },
+                    "image_url": {
+                        "description": "URL de la imagen del platillo",
+                        "type": "string",
+                        "example": "https://cdn.pollocharly.com/dishes/familiar-especial.jpg",
+                        "nullable": true
+                    },
+                    "is_daily_menu": {
+                        "description": "Indica si forma parte del menú del día",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "is_active": {
+                        "description": "Estado del platillo",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "recipes": {
+                        "description": "Lista de insumos y cantidades requeridas por porción (reemplaza la receta anterior)",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CreateDishRecipeItemInput"
+                        }
+                    },
+                    "complements": {
+                        "description": "IDs de complementos aplicables al platillo (reemplaza la lista anterior)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Pollo Frito Familiar Especial",
+                    "category_id": 1,
+                    "description": "8 piezas crujientes de pollo con receta secreta",
+                    "price": 135,
+                    "image_url": "https://cdn.pollocharly.com/dishes/familiar-especial.jpg",
+                    "is_daily_menu": false,
+                    "is_active": true,
+                    "recipes": [
+                        {
+                            "supply_id": 1,
+                            "required_quantity": 1.5
+                        }
+                    ],
+                    "complements": [
+                        1
+                    ]
+                }
+            },
             "CreateUserRequest": {
                 "title": "Create User Request",
                 "description": "Datos necesarios para registrar un nuevo usuario en el sistema",
@@ -1616,6 +2530,134 @@
                     "is_active": true
                 }
             },
+            "DishCategoryResource": {
+                "title": "Dish Category",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Pollos"
+                    }
+                },
+                "type": "object"
+            },
+            "DishRecipeItemResource": {
+                "title": "Dish Recipe Item",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "supply_name": {
+                        "type": "string",
+                        "example": "Pechuga de Pollo"
+                    },
+                    "measurement_unit": {
+                        "type": "string",
+                        "example": "kg"
+                    },
+                    "required_quantity": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.5
+                    }
+                },
+                "type": "object"
+            },
+            "DishComplementItemResource": {
+                "title": "Dish Complement Item",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Papas Fritas"
+                    },
+                    "extra_price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 15
+                    }
+                },
+                "type": "object"
+            },
+            "DishResource": {
+                "title": "Dish Resource",
+                "description": "Información completa del platillo con su receta y complementos asociados",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Pollo Frito Familiar"
+                    },
+                    "category_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "category": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DishCategoryResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "8 piezas de pollo frito crujiente",
+                        "nullable": true
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 125
+                    },
+                    "image_url": {
+                        "type": "string",
+                        "example": "https://cdn.pollocharly.com/dishes/familiar.jpg",
+                        "nullable": true
+                    },
+                    "is_daily_menu": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "recipes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DishRecipeItemResource"
+                        }
+                    },
+                    "complements": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DishComplementItemResource"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "UserRole": {
                 "title": "User Role",
                 "description": "Rol del usuario dentro del sistema",
@@ -1691,6 +2733,10 @@
         {
             "name": "General",
             "description": "Endpoints generales de diagnóstico y verificación de salud de la API"
+        },
+        {
+            "name": "Gestión de Menú",
+            "description": "Gestión de Menú"
         },
         {
             "name": "Gestión de Usuarios",
