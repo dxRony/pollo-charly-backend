@@ -12,6 +12,7 @@ use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SupplyAlertController;
 use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\UserController;
@@ -74,6 +75,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/{id}/start-preparation', [OrderController::class, 'startPreparation']);
     Route::post('/orders/{id}/ready', [OrderController::class, 'markAsReady']);
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
+    Route::post('/orders/{id}/pay', [SaleController::class, 'store']);
+
+    Route::get('/payment-methods', [SaleController::class, 'paymentMethods']);
+    Route::get('/receipt-types', [SaleController::class, 'receiptTypes']);
+    Route::get('/sales', [SaleController::class, 'index']);
+    Route::post('/sales', [SaleController::class, 'store']);
+    Route::get('/sales/{id}', [SaleController::class, 'show']);
 
     Route::middleware('role:Administrador')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
