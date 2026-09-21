@@ -89,4 +89,48 @@ class Dish extends Model
             })
             ->exists();
     }
+
+    /**
+     * Check if all required supplies in the recipe are available in current inventory stock.
+     *
+     * @return array{available: bool, insufficient_supplies: array<int, array{supply_id: int, name: string, required: float, current_stock: float, unit: string}>}
+     */
+    public function checkSupplyAvailability(float $portions = 1.0): array
+    {
+        $insufficient = [];
+        $this->loadMissing('recipes.supply.measurementUnit');
+
+        foreach ($this->recipes as $recipe) {
+            $supply = $recipe->supply;
+            if (! $supply) {
+                continue;
+            }
+
+            $needed = (float) $recipe->required_quantity * $portions;
+            $stock = (float) $supply->current_stock;
+
+            if ($stock < $needed) {
+                $insufficient[] = [
+                    'supply_id' => $supply->id,
+                    'name' => $supply->name,
+                    'required' => $needed,
+                    'current_stock' => $stock,
+                    'unit' => $supply->measurementUnit?->abbreviation ?? $supply->measurementUnit?->name ?? '',
+                ];
+            }
+        }
+
+        return [
+            'available' => count($insufficient) === 0,
+            'insufficient_supplies' => $insufficient,
+        ];
+    }
+
+    /**
+     * Determine if the dish has sufficient supplies available for preparation.
+     */
+    public function hasSufficientSupplies(): bool
+    {
+        return $this->checkSupplyAvailability()['available'];
+    }
 }
