@@ -3840,6 +3840,421 @@
                 ]
             }
         },
+        "/api/sales": {
+            "get": {
+                "tags": [
+                    "Ventas y Facturación"
+                ],
+                "summary": "Listar ventas comerciales",
+                "description": "Obtiene el listado paginado de ventas registradas en el sistema, permitiendo filtrar por fecha, cajero, método de pago y tipo de comprobante.",
+                "operationId": "listSales",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Filtrar por fecha específica (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "cashier_user_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del cajero responsable",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "payment_method",
+                        "in": "query",
+                        "description": "Filtrar por método de pago (efectivo, tarjeta, transferencia)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "receipt_type",
+                        "in": "query",
+                        "description": "Filtrar por tipo de comprobante (ticket, factura)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por número de comprobante o código de comanda",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de registros por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de ventas obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SaleResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 25
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 2
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Ventas y Facturación"
+                ],
+                "summary": "Registrar venta y cierre de comanda",
+                "description": "Registra la venta a partir de una comanda en estado \"lista\". Valida el cobro, calcula el vuelto en efectivo, genera el comprobante interno, descuenta el inventario físico (movimiento de salida consumo_venta), marca la comanda como entregada, libera la mesa (si era en mesa) y notifica en tiempo real vía WebSocket.",
+                "operationId": "createSale",
+                "requestBody": {
+                    "description": "Datos de la venta, método de pago y monto recibido",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSaleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Venta registrada exitosamente y comanda cerrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Venta registrada exitosamente y comanda cerrada."
+                                        },
+                                        "sale": {
+                                            "$ref": "#/components/schemas/SaleResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Comanda no lista, monto recibido insuficiente o comanda ya vendida.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede registrar la venta. La comanda debe estar en estado \"lista\" para proceder al cobro y cierre."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Mesero/Cajero o Administrador.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para registrar ventas. Se requiere rol de Mesero/Cajero o Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/sales/{id}": {
+            "get": {
+                "tags": [
+                    "Ventas y Facturación"
+                ],
+                "summary": "Consultar detalle de una venta",
+                "description": "Obtiene el detalle completo de una venta con su comanda, líneas de consumo, método de pago y comprobante.",
+                "operationId": "getSale",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la venta",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la venta obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "sale": {
+                                            "$ref": "#/components/schemas/SaleResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Venta no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Venta no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/payment-methods": {
+            "get": {
+                "tags": [
+                    "Ventas y Facturación"
+                ],
+                "summary": "Listar métodos de pago",
+                "description": "Obtiene el catálogo de métodos de pago disponibles (efectivo, tarjeta, transferencia).",
+                "operationId": "listPaymentMethods",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de métodos de pago obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PaymentMethodResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/receipt-types": {
+            "get": {
+                "tags": [
+                    "Ventas y Facturación"
+                ],
+                "summary": "Listar tipos de comprobante",
+                "description": "Obtiene el catálogo de tipos de comprobante emitibles (ticket, factura).",
+                "operationId": "listReceiptTypes",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de tipos de comprobante obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ReceiptTypeResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/supply-alerts": {
             "get": {
                 "tags": [
@@ -6469,6 +6884,75 @@
                 },
                 "type": "object"
             },
+            "CreateSaleRequest": {
+                "title": "Create Sale Request",
+                "description": "Datos necesarios para registrar la venta comercial, realizar el cobro y cerrar la comanda",
+                "required": [
+                    "order_id"
+                ],
+                "properties": {
+                    "order_id": {
+                        "description": "ID de la comanda en estado lista a cobrar",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "payment_method": {
+                        "description": "Método de pago utilizado: efectivo, tarjeta o transferencia",
+                        "type": "string",
+                        "example": "efectivo",
+                        "nullable": true,
+                        "enum": [
+                            "efectivo",
+                            "tarjeta",
+                            "transferencia"
+                        ]
+                    },
+                    "payment_method_id": {
+                        "description": "ID del método de pago en base de datos",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "received_amount": {
+                        "description": "Monto en efectivo recibido del cliente (obligatorio para pagos en efectivo)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 100,
+                        "nullable": true
+                    },
+                    "receipt_type": {
+                        "description": "Tipo de comprobante: ticket o factura (por defecto ticket)",
+                        "type": "string",
+                        "example": "ticket",
+                        "nullable": true,
+                        "enum": [
+                            "ticket",
+                            "factura"
+                        ]
+                    },
+                    "receipt_type_id": {
+                        "description": "ID del tipo de comprobante en base de datos",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "discount": {
+                        "description": "Descuento aplicado a la venta (por defecto 0.00)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 0,
+                        "nullable": true
+                    },
+                    "tax": {
+                        "description": "Impuesto aplicable (por defecto 0.00)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 0,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "AttendSupplyAlertRequest": {
                 "title": "Attend Supply Alert Request",
                 "description": "Datos opcionales para marcar como atendida una alerta de reposición",
@@ -7460,6 +7944,40 @@
                 },
                 "type": "object"
             },
+            "PaymentMethodResource": {
+                "title": "Payment Method Resource",
+                "description": "Método de pago admitido en el restaurante (efectivo, tarjeta, transferencia)",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del método de pago",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre clave del método de pago",
+                        "type": "string",
+                        "example": "efectivo"
+                    }
+                },
+                "type": "object"
+            },
+            "ReceiptTypeResource": {
+                "title": "Receipt Type Resource",
+                "description": "Tipo de comprobante emitido por la venta (ticket, factura)",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del tipo de comprobante",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre clave del tipo de comprobante",
+                        "type": "string",
+                        "example": "ticket"
+                    }
+                },
+                "type": "object"
+            },
             "RestaurantTableResource": {
                 "title": "Restaurant Table Resource",
                 "description": "Mesa del restaurante con su capacidad y estado de ocupación actual",
@@ -7493,6 +8011,124 @@
                         "description": "Indica si la mesa está libre para asignación",
                         "type": "boolean",
                         "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "SaleResource": {
+                "title": "Sale Resource",
+                "description": "Registro de venta comercial y comprobante de pago de una comanda",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único de la venta",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "order_id": {
+                        "description": "Identificador de la comanda asociada",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "order": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "cashier_user_id": {
+                        "description": "ID del mesero o cajero que registró la venta",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "cashier": {
+                        "description": "Información del cajero responsable",
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "receipt_type_id": {
+                        "description": "ID del tipo de comprobante emitido",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "receipt_type": {
+                        "description": "Nombre del tipo de comprobante (ticket, factura)",
+                        "type": "string",
+                        "example": "ticket"
+                    },
+                    "payment_method_id": {
+                        "description": "ID del método de pago utilizado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "payment_method": {
+                        "description": "Nombre del método de pago (efectivo, tarjeta, transferencia)",
+                        "type": "string",
+                        "example": "efectivo"
+                    },
+                    "sale_status_id": {
+                        "description": "ID del estado de la venta",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "sale_status": {
+                        "description": "Nombre del estado de la venta (completada, anulada)",
+                        "type": "string",
+                        "example": "completada"
+                    },
+                    "receipt_number": {
+                        "description": "Número único de comprobante interno emitido",
+                        "type": "string",
+                        "example": "VTA-20260921-0001"
+                    },
+                    "subtotal": {
+                        "description": "Subtotal acumulado de la comanda",
+                        "type": "number",
+                        "format": "float",
+                        "example": 85
+                    },
+                    "discount": {
+                        "description": "Descuento aplicado a la venta",
+                        "type": "number",
+                        "format": "float",
+                        "example": 0
+                    },
+                    "tax": {
+                        "description": "Impuesto aplicado a la venta",
+                        "type": "number",
+                        "format": "float",
+                        "example": 0
+                    },
+                    "total": {
+                        "description": "Total definitivo a pagar por la venta",
+                        "type": "number",
+                        "format": "float",
+                        "example": 85
+                    },
+                    "received_amount": {
+                        "description": "Monto recibido del cliente",
+                        "type": "number",
+                        "format": "float",
+                        "example": 100
+                    },
+                    "change_amount": {
+                        "description": "Vuelto devuelto al cliente",
+                        "type": "number",
+                        "format": "float",
+                        "example": 15
+                    },
+                    "created_at": {
+                        "description": "Fecha y hora de registro de la venta",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-21T12:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "description": "Fecha y hora de última modificación",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-21T12:00:00.000000Z"
                     }
                 },
                 "type": "object"
@@ -7761,6 +8397,10 @@
         {
             "name": "Gestión de Usuarios",
             "description": "Gestión de Usuarios"
+        },
+        {
+            "name": "Ventas y Facturación",
+            "description": "Ventas y Facturación"
         },
         {
             "name": "Alertas de Insumos",
