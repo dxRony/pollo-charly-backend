@@ -3074,6 +3074,133 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Comandas y Pedidos"
+                ],
+                "summary": "Modificar comanda en curso con reglas de tiempo y estado",
+                "description": "Modifica una comanda en curso. Si la comanda todavía no entra en estado \"en_preparacion\" y no ha superado el tiempo límite de modificación (5 minutos por defecto), permite eliminar o sustituir platillos (marcándolos con estado \"eliminado\" para trazabilidad) y agregar nuevos productos previa verificación de stock. Si ya está en preparación o superó el tiempo límite, bloquea la eliminación y habilita únicamente la adición de productos. Actualiza la reserva de inventario y notifica en tiempo real a cocina vía WebSocket (evento ComandaModificada en canal private-cocina).",
+                "operationId": "modifyOrder",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la comanda a modificar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Detalle de cambios: platillos a agregar, IDs de ítems a eliminar y notas",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ModifyOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Comanda modificada exitosamente y enviada a cocina.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Comanda modificada exitosamente y enviada a cocina."
+                                        },
+                                        "order": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Comanda no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Comanda no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Restricción de modificación (eliminación bloqueada por estado/tiempo), insumos insuficientes o comanda finalizada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se pueden eliminar platillos de la comanda: La comanda ya está en preparación en cocina. Únicamente se permite la adición de productos."
+                                        },
+                                        "insufficient_supplies": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            },
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Mesero/Cajero o Administrador.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para modificar comandas. Se requiere rol de Mesero/Cajero o Administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/orders/{id}/cancel": {
@@ -6028,6 +6155,37 @@
                     ]
                 }
             },
+            "ModifyOrderRequest": {
+                "title": "Modify Order Request",
+                "description": "Datos para modificar una comanda en curso: eliminar platillos permitidos, agregar nuevos productos y actualizar notas",
+                "properties": {
+                    "notes": {
+                        "description": "Nuevas observaciones o notas actualizadas para la comanda",
+                        "type": "string",
+                        "example": "Cliente solicita agregar salsa extra picante",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "remove_item_ids": {
+                        "description": "Lista de IDs de ítems de la comanda (order_items) a marcar como eliminados (bloqueado si está en preparación o fuera de tiempo)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "nullable": true
+                    },
+                    "add_items": {
+                        "description": "Lista de nuevos platillos y complementos a incorporar a la comanda",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CreateOrderItem"
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "AttendSupplyAlertRequest": {
                 "title": "Attend Supply Alert Request",
                 "description": "Datos opcionales para marcar como atendida una alerta de reposición",
@@ -6937,8 +7095,13 @@
                         "type": "integer",
                         "example": 2
                     },
+                    "active_items_count": {
+                        "description": "Cantidad de líneas activas vigentes a facturar",
+                        "type": "integer",
+                        "example": 2
+                    },
                     "subtotal": {
-                        "description": "Subtotal acumulado de platillos y complementos",
+                        "description": "Subtotal acumulado de platillos y complementos activos",
                         "type": "number",
                         "format": "float",
                         "example": 95
@@ -6948,6 +7111,22 @@
                         "type": "number",
                         "format": "float",
                         "example": 95
+                    },
+                    "is_modification_restricted": {
+                        "description": "Indica si la comanda tiene bloqueada la eliminación de platillos (solo adición)",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "can_remove_items": {
+                        "description": "Indica si se pueden eliminar o modificar libremente los platillos de la comanda",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "modification_restriction_reason": {
+                        "description": "Motivo de restricción a solo adición si aplica",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
                     },
                     "created_at": {
                         "description": "Fecha y hora de registro de la comanda",
