@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Events\ComandaCancelada;
 use App\Events\ComandaEnviadaACocina;
+use App\Http\Requests\Order\CancelOrderRequest;
 use App\Http\Requests\Order\CreateOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrderStatusResource;
@@ -481,6 +483,161 @@ class OrderController extends Controller
         return response()->json([
             'order' => new OrderResource($order),
         ]);
+    }
+
+    #[OA\Post(
+        path: '/api/orders/{id}/cancel',
+        operationId: 'cancelOrder',
+        description: 'Anula una comanda antes de que cocina inicie su preparación. Libera inmediatamente el bloqueo de existencias de insumos asociados, marca la mesa como disponible (si el pedido era en mesa) y notifica en tiempo real a la pantalla de cocina mediante el evento ComandaCancelada en el canal private-cocina.',
+        summary: 'Anular comanda antes de preparación',
+        security: [['bearerAuth' => []]],
+        tags: ['Comandas y Pedidos'],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                description: 'ID de la comanda a anular',
+                required: true,
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            description: 'Motivo o justificación de la cancelación',
+            required: false,
+            content: new OA\JsonContent(ref: '#/components/schemas/CancelOrderRequest')
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Comanda cancelada exitosamente y existencias liberadas.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Comanda cancelada exitosamente y existencias liberadas.'),
+                        new OA\Property(property: 'order', ref: '#/components/schemas/OrderResource'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Comanda no encontrada.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Comanda no encontrada.')]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'La comanda ya está en preparación, entregada o previamente cancelada.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'La comanda ya está en preparación en cocina y no puede cancelarse directamente. Remítase a la modificación de pedidos en curso.')]
+                )
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'No autorizado. Se requiere rol de Mesero/Cajero o Administrador.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'No tienes permisos para cancelar comandas. Se requiere rol de Mesero/Cajero o Administrador.')]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'No autenticado.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Unauthenticated.')]
+                )
+            ),
+        ]
+    )]
+    public function cancel(CancelOrderRequest $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $reasonText = $request->getResolvedReason();
+
+        $result = DB::transaction(function () use ($id, $user, $reasonText) {
+            $order = Order::query()
+                ->with(['status', 'restaurantTable', 'items'])
+                ->lockForUpdate()
+                ->find($id);
+
+            if (! $order) {
+                return response()->json([
+                    'message' => 'Comanda no encontrada.',
+                ], 404);
+            }
+
+            $currentStatus = $order->status?->name;
+
+            if ($currentStatus === OrderStatus::CANCELADA) {
+                return response()->json([
+                    'message' => 'La comanda ya ha sido cancelada previamente.',
+                ], 422);
+            }
+
+            if ($currentStatus === OrderStatus::EN_PREPARACION || $order->preparation_start_time !== null) {
+                return response()->json([
+                    'message' => 'La comanda ya está en preparación en cocina y no puede cancelarse directamente. Remítase a la modificación de pedidos en curso.',
+                ], 422);
+            }
+
+            if ($currentStatus === OrderStatus::LISTA || $currentStatus === OrderStatus::ENTREGADA) {
+                return response()->json([
+                    'message' => "La comanda se encuentra en estado '{$currentStatus}' y no puede cancelarse.",
+                ], 422);
+            }
+
+            if ($currentStatus !== OrderStatus::PENDIENTE) {
+                return response()->json([
+                    'message' => 'Solo se pueden cancelar comandas en estado pendiente antes de iniciar preparación.',
+                ], 422);
+            }
+
+            // Actualizar estado de la comanda a cancelada y registrar motivo con responsable
+            $cancelledStatus = OrderStatus::query()->where('name', OrderStatus::CANCELADA)->firstOrFail();
+            $cancelledItemStatus = OrderItemStatus::query()->where('name', OrderItemStatus::CANCELADO)->firstOrFail();
+
+            $order->order_status_id = $cancelledStatus->id;
+            $order->cancellation_reason = "{$reasonText} (Cancelado por {$user->name})";
+            $order->save();
+
+            // Marcar todos los ítems de la comanda como cancelados
+            $order->items()->update([
+                'order_item_status_id' => $cancelledItemStatus->id,
+            ]);
+
+            // Liberar la mesa si la comanda era de tipo en mesa
+            if ($order->restaurant_table_id) {
+                $table = RestaurantTable::query()->lockForUpdate()->find($order->restaurant_table_id);
+                if ($table) {
+                    $availableStatus = TableStatus::query()->where('name', TableStatus::DISPONIBLE)->firstOrFail();
+                    $table->table_status_id = $availableStatus->id;
+                    $table->save();
+                }
+            }
+
+            return $order;
+        });
+
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        // Cargar relaciones para el recurso y WebSocket
+        $result->load([
+            'restaurantTable.status',
+            'waiter.role',
+            'type',
+            'status',
+            'items.dish.category',
+            'items.status',
+            'items.complements.complement',
+        ]);
+
+        // Emitir evento en tiempo real por WebSocket hacia la pantalla de cocina
+        broadcast(new ComandaCancelada($result));
+
+        return response()->json([
+            'message' => 'Comanda cancelada exitosamente y existencias liberadas.',
+            'order' => new OrderResource($result),
+        ], 200);
     }
 
     #[OA\Get(
