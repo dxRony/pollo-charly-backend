@@ -1,0 +1,310 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Pollo Charly API",
+        "description": "Documentación oficial interactiva de los endpoints RESTful del backend de Pollo Charly.",
+        "contact": {
+            "name": "Equipo de Desarrollo Pollo Charly"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Servidor Actual (Relativo)"
+        },
+        {
+            "url": "http://localhost:8000",
+            "description": "Servidor Local (localhost:8000)"
+        },
+        {
+            "url": "http://127.0.0.1:8000",
+            "description": "Servidor Local (127.0.0.1:8000)"
+        }
+    ],
+    "paths": {
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Autenticacion"
+                ],
+                "summary": "Iniciar sesión en el sistema",
+                "description": "Autentica a un usuario existente mediante sus credenciales y emite un token Bearer (Sanctum) para consumir los endpoints protegidos.",
+                "operationId": "login",
+                "requestBody": {
+                    "description": "Credenciales del usuario",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Autenticación exitosa. Retorna los datos del usuario y el token Bearer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        },
+                                        "token": {
+                                            "description": "Token de acceso Bearer para peticiones subsecuentes",
+                                            "type": "string",
+                                            "example": "1|qWeRtYuIoP1234567890abcdef..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación o credenciales incorrectas.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Las credenciales no coinciden con nuestros registros."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Las credenciales no coinciden con nuestros registros."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Autenticacion"
+                ],
+                "summary": "Cerrar sesión (revocar token actual)",
+                "description": "Revoca el token de acceso personal actualmente utilizado por el usuario, finalizando su sesión activa.",
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Sesión cerrada correctamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/me": {
+            "get": {
+                "tags": [
+                    "Autenticacion"
+                ],
+                "summary": "Obtener datos del usuario autenticado",
+                "description": "Obtiene los detalles del perfil y rol del usuario correspondiente al token Bearer autenticado.",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "Información del usuario autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/ping": {
+            "get": {
+                "tags": [
+                    "General"
+                ],
+                "summary": "Verificar estado de la API",
+                "description": "Endpoint de diagnóstico para comprobar la disponibilidad y conectividad con la API.",
+                "operationId": "ping",
+                "responses": {
+                    "200": {
+                        "description": "La API está en línea y respondiendo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "pong desde Laravel"
+                                        },
+                                        "timestamp": {
+                                            "type": "string",
+                                            "example": "2026-09-20 18:00:00"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "LoginRequest": {
+                "title": "Login Request",
+                "description": "Credenciales requeridas para autenticación",
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "Correo electrónico del usuario",
+                        "type": "string",
+                        "format": "email",
+                        "example": "admin@pollocharly.com"
+                    },
+                    "password": {
+                        "description": "Contraseña del usuario",
+                        "type": "string",
+                        "format": "password",
+                        "example": "password"
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "email": "admin@pollocharly.com",
+                    "password": "password"
+                }
+            },
+            "UserRole": {
+                "title": "User Role",
+                "description": "Rol del usuario dentro del sistema",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Administrador"
+                    }
+                },
+                "type": "object"
+            },
+            "UserResource": {
+                "title": "User Resource",
+                "description": "Datos del usuario autenticado",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Ana Administradora"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "admin@pollocharly.com"
+                    },
+                    "role": {
+                        "$ref": "#/components/schemas/UserRole"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Ingrese su token de acceso Bearer generado en /api/login.",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Autenticacion",
+            "description": "Endpoints para inicio de sesión, información del usuario autenticado y cierre de sesión"
+        },
+        {
+            "name": "General",
+            "description": "Endpoints generales de diagnóstico y verificación de salud de la API"
+        }
+    ]
+}
