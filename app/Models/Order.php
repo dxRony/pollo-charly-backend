@@ -35,6 +35,56 @@ class Order extends Model
     }
 
     /**
+     * Determina si la comanda tiene restringida la eliminación de platillos (solo adición).
+     * Condición: orden en preparación, preparation_start_time no nulo, o tiempo límite superado.
+     */
+    public function isModificationRestricted(): bool
+    {
+        $timeLimitMinutes = (int) config('orders.modification_time_limit_minutes', 5);
+
+        // Si ya inició preparación (por timestamp o por estado)
+        if ($this->preparation_start_time !== null) {
+            return true;
+        }
+
+        $statusName = $this->relationLoaded('status') && $this->status ? $this->status->name : null;
+        if ($statusName === OrderStatus::EN_PREPARACION || $statusName === OrderStatus::LISTA || $statusName === OrderStatus::ENTREGADA) {
+            return true;
+        }
+
+        // Si superó el tiempo límite desde su registro
+        if ($this->created_at !== null && now()->greaterThan($this->created_at->copy()->addMinutes($timeLimitMinutes))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Devuelve el motivo descriptivo por el cual la comanda tiene la modificación restringida a solo adición.
+     */
+    public function getModificationRestrictionReason(): ?string
+    {
+        $timeLimitMinutes = (int) config('orders.modification_time_limit_minutes', 5);
+
+        $statusName = $this->relationLoaded('status') && $this->status ? $this->status->name : null;
+
+        if ($this->preparation_start_time !== null || $statusName === OrderStatus::EN_PREPARACION) {
+            return 'La comanda ya está en preparación en cocina. Únicamente se permite la adición de productos.';
+        }
+
+        if ($statusName === OrderStatus::LISTA || $statusName === OrderStatus::ENTREGADA) {
+            return 'La comanda ya finalizó su preparación en cocina. Únicamente se permite la adición de productos.';
+        }
+
+        if ($this->created_at !== null && now()->greaterThan($this->created_at->copy()->addMinutes($timeLimitMinutes))) {
+            return "Se ha superado el tiempo límite de modificación libre ({$timeLimitMinutes} minutos). Únicamente se permite la adición de productos.";
+        }
+
+        return null;
+    }
+
+    /**
      * @return BelongsTo<RestaurantTable, $this>
      */
     public function restaurantTable(): BelongsTo

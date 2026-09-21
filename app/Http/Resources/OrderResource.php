@@ -28,8 +28,12 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'preparation_start_time', description: 'Fecha y hora en que cocina inició la preparación', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'items', type: 'array', items: new OA\Items(ref: '#/components/schemas/OrderItemResource')),
         new OA\Property(property: 'items_count', description: 'Cantidad total de líneas de platillos solicitados', type: 'integer', example: 2),
-        new OA\Property(property: 'subtotal', description: 'Subtotal acumulado de platillos y complementos', type: 'number', format: 'float', example: 95.00),
+        new OA\Property(property: 'active_items_count', description: 'Cantidad de líneas activas vigentes a facturar', type: 'integer', example: 2),
+        new OA\Property(property: 'subtotal', description: 'Subtotal acumulado de platillos y complementos activos', type: 'number', format: 'float', example: 95.00),
         new OA\Property(property: 'total', description: 'Total a pagar por la comanda', type: 'number', format: 'float', example: 95.00),
+        new OA\Property(property: 'is_modification_restricted', description: 'Indica si la comanda tiene bloqueada la eliminación de platillos (solo adición)', type: 'boolean', example: false),
+        new OA\Property(property: 'can_remove_items', description: 'Indica si se pueden eliminar o modificar libremente los platillos de la comanda', type: 'boolean', example: true),
+        new OA\Property(property: 'modification_restriction_reason', description: 'Motivo de restricción a solo adición si aplica', type: 'string', nullable: true, example: null),
         new OA\Property(property: 'created_at', description: 'Fecha y hora de registro de la comanda', type: 'string', format: 'date-time', example: '2026-09-20T12:00:00.000000Z'),
         new OA\Property(property: 'updated_at', description: 'Fecha y hora de última modificación', type: 'string', format: 'date-time', example: '2026-09-20T12:00:00.000000Z'),
     ]
@@ -44,9 +48,20 @@ class OrderResource extends JsonResource
     public function toArray(Request $request): array
     {
         $totalCalculado = 0.00;
+        $activeItemsCount = 0;
 
         if ($this->relationLoaded('items')) {
             foreach ($this->items as $item) {
+                $statusName = $item->relationLoaded('status') && $item->status
+                    ? $item->status->name
+                    : null;
+
+                // Los platillos eliminados o cancelados no se computan en los totales a facturar
+                if ($statusName === \App\Models\OrderItemStatus::ELIMINADO || $statusName === \App\Models\OrderItemStatus::CANCELADO) {
+                    continue;
+                }
+
+                $activeItemsCount++;
                 $itemSubtotal = (float) $item->subtotal;
                 $complementsSubtotal = $item->relationLoaded('complements')
                     ? (float) $item->complements->sum('subtotal')
@@ -90,8 +105,12 @@ class OrderResource extends JsonResource
             'items_count' => $this->relationLoaded('items')
                 ? $this->items->count()
                 : 0,
+            'active_items_count' => $activeItemsCount,
             'subtotal' => $totalCalculado,
             'total' => $totalCalculado,
+            'is_modification_restricted' => $this->resource->isModificationRestricted(),
+            'can_remove_items' => ! $this->resource->isModificationRestricted(),
+            'modification_restriction_reason' => $this->resource->getModificationRestrictionReason(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

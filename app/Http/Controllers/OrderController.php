@@ -6,8 +6,10 @@ namespace App\Http\Controllers;
 
 use App\Events\ComandaCancelada;
 use App\Events\ComandaEnviadaACocina;
+use App\Events\ComandaModificada;
 use App\Http\Requests\Order\CancelOrderRequest;
 use App\Http\Requests\Order\CreateOrderRequest;
+use App\Http\Requests\Order\ModifyOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrderStatusResource;
 use App\Http\Resources\OrderTypeResource;
@@ -636,6 +638,364 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => 'Comanda cancelada exitosamente y existencias liberadas.',
+            'order' => new OrderResource($result),
+        ], 200);
+    }
+
+    #[OA\Put(
+        path: '/api/orders/{id}',
+        operationId: 'modifyOrder',
+        description: 'Modifica una comanda en curso. Si la comanda todavía no entra en estado "en_preparacion" y no ha superado el tiempo límite de modificación (5 minutos por defecto), permite eliminar o sustituir platillos (marcándolos con estado "eliminado" para trazabilidad) y agregar nuevos productos previa verificación de stock. Si ya está en preparación o superó el tiempo límite, bloquea la eliminación y habilita únicamente la adición de productos. Actualiza la reserva de inventario y notifica en tiempo real a cocina vía WebSocket (evento ComandaModificada en canal private-cocina).',
+        summary: 'Modificar comanda en curso con reglas de tiempo y estado',
+        security: [['bearerAuth' => []]],
+        tags: ['Comandas y Pedidos'],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                description: 'ID de la comanda a modificar',
+                required: true,
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            description: 'Detalle de cambios: platillos a agregar, IDs de ítems a eliminar y notas',
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/ModifyOrderRequest')
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Comanda modificada exitosamente y enviada a cocina.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Comanda modificada exitosamente y enviada a cocina.'),
+                        new OA\Property(property: 'order', ref: '#/components/schemas/OrderResource'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Comanda no encontrada.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Comanda no encontrada.')]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Restricción de modificación (eliminación bloqueada por estado/tiempo), insumos insuficientes o comanda finalizada.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'No se pueden eliminar platillos de la comanda: La comanda ya está en preparación en cocina. Únicamente se permite la adición de productos.'),
+                        new OA\Property(property: 'insufficient_supplies', type: 'array', items: new OA\Items(type: 'object'), nullable: true),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'No autorizado. Se requiere rol de Mesero/Cajero o Administrador.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'No tienes permisos para modificar comandas. Se requiere rol de Mesero/Cajero o Administrador.')]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'No autenticado.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Unauthenticated.')]
+                )
+            ),
+        ]
+    )]
+    public function update(ModifyOrderRequest $request, int $id): JsonResponse
+    {
+        $validated = $request->validated();
+        $user = $request->user();
+
+        $result = DB::transaction(function () use ($id, $validated, $user) {
+            $order = Order::query()
+                ->with(['status', 'restaurantTable.status', 'items.dish', 'items.status', 'items.complements.complement'])
+                ->lockForUpdate()
+                ->find($id);
+
+            if (! $order) {
+                return response()->json([
+                    'message' => 'Comanda no encontrada.',
+                ], 404);
+            }
+
+            $currentStatus = $order->status?->name;
+
+            if ($currentStatus === OrderStatus::CANCELADA) {
+                return response()->json([
+                    'message' => 'No se puede modificar una comanda que ha sido cancelada.',
+                ], 422);
+            }
+
+            if ($currentStatus === OrderStatus::ENTREGADA) {
+                return response()->json([
+                    'message' => 'No se puede modificar una comanda que ya fue entregada.',
+                ], 422);
+            }
+
+            $isRestricted = $order->isModificationRestricted();
+            $removeItemIds = $validated['remove_item_ids'] ?? [];
+
+            // 1. Si la orden está restringida y se solicitó eliminar algún platillo, rechazar
+            if ($isRestricted && count($removeItemIds) > 0) {
+                $reason = $order->getModificationRestrictionReason();
+                return response()->json([
+                    'message' => "No se pueden eliminar platillos de la comanda: {$reason}",
+                ], 422);
+            }
+
+            $removedNames = [];
+            $eliminatedStatus = OrderItemStatus::query()->where('name', OrderItemStatus::ELIMINADO)->firstOrFail();
+
+            // 2. Procesar eliminaciones si no está restringida
+            if (count($removeItemIds) > 0) {
+                foreach ($removeItemIds as $itemId) {
+                    $item = $order->items->firstWhere('id', (int) $itemId);
+
+                    if (! $item) {
+                        return response()->json([
+                            'message' => "El platillo con ID {$itemId} no pertenece a esta comanda.",
+                        ], 422);
+                    }
+
+                    if ($item->status?->name === OrderItemStatus::ELIMINADO) {
+                        continue;
+                    }
+
+                    $item->order_item_status_id = $eliminatedStatus->id;
+                    $item->save();
+
+                    $removedNames[] = $item->dish?->name ?? "Ítem #{$item->id}";
+                }
+            }
+
+            // 3. Verificar que la comanda no quede vacía
+            $addItems = $validated['add_items'] ?? [];
+            $remainingActiveItemsCount = $order->items()
+                ->whereNotIn('order_item_status_id', [
+                    $eliminatedStatus->id,
+                    OrderItemStatus::query()->where('name', OrderItemStatus::CANCELADO)->value('id'),
+                ])
+                ->count();
+
+            if ($remainingActiveItemsCount === 0 && count($addItems) === 0) {
+                return response()->json([
+                    'message' => 'La comanda no puede quedar sin platillos activos. Si desea anular el pedido completo, utilice la opción de cancelar comanda.',
+                ], 422);
+            }
+
+            // 4. Pre-cargar nuevos platillos/complementos y verificar requerimiento de insumos
+            $itemsToAddData = [];
+            $suppliesNeeded = [];
+
+            if (count($addItems) > 0) {
+                foreach ($addItems as $rawItem) {
+                    $dish = Dish::query()
+                        ->with(['recipes.supply.measurementUnit'])
+                        ->lockForUpdate()
+                        ->findOrFail($rawItem['dish_id']);
+
+                    if (! $dish->is_active) {
+                        return response()->json([
+                            'message' => "El platillo '{$dish->name}' no está disponible actualmente.",
+                        ], 422);
+                    }
+
+                    $quantity = (int) $rawItem['quantity'];
+
+                    foreach ($dish->recipes as $recipe) {
+                        $supplyId = $recipe->supply_id;
+                        $neededAmount = (float) $recipe->required_quantity * $quantity;
+
+                        if (! isset($suppliesNeeded[$supplyId])) {
+                            $suppliesNeeded[$supplyId] = [
+                                'required' => 0.0,
+                                'supply' => $recipe->supply,
+                            ];
+                        }
+                        $suppliesNeeded[$supplyId]['required'] += $neededAmount;
+                    }
+
+                    $complementsData = [];
+                    if (! empty($rawItem['complements'])) {
+                        foreach ($rawItem['complements'] as $rawComp) {
+                            $complement = Complement::query()
+                                ->with(['complementSupplies.supply.measurementUnit'])
+                                ->lockForUpdate()
+                                ->findOrFail($rawComp['complement_id']);
+
+                            if (! $complement->is_active) {
+                                return response()->json([
+                                    'message' => "El complemento '{$complement->name}' no está disponible actualmente.",
+                                ], 422);
+                            }
+
+                            $compQuantity = (int) $rawComp['quantity'];
+
+                            foreach ($complement->complementSupplies as $compSupply) {
+                                $supplyId = $compSupply->supply_id;
+                                $neededAmount = (float) $compSupply->required_quantity * $compQuantity;
+
+                                if (! isset($suppliesNeeded[$supplyId])) {
+                                    $suppliesNeeded[$supplyId] = [
+                                        'required' => 0.0,
+                                        'supply' => $compSupply->supply,
+                                    ];
+                                }
+                                $suppliesNeeded[$supplyId]['required'] += $neededAmount;
+                            }
+
+                            $complementsData[] = [
+                                'complement' => $complement,
+                                'quantity' => $compQuantity,
+                            ];
+                        }
+                    }
+
+                    $itemsToAddData[] = [
+                        'dish' => $dish,
+                        'quantity' => $quantity,
+                        'notes' => $rawItem['notes'] ?? null,
+                        'complements' => $complementsData,
+                    ];
+                }
+
+                // Verificar existencias disponibles (considerando que los ítems eliminados ya no ocupan reserva)
+                $insufficientSupplies = [];
+
+                foreach ($suppliesNeeded as $supplyId => $data) {
+                    $supply = Supply::query()
+                        ->with('measurementUnit')
+                        ->lockForUpdate()
+                        ->findOrFail($supplyId);
+
+                    $needed = (float) $data['required'];
+
+                    $activeOrderStatuses = [OrderStatus::PENDIENTE, OrderStatus::EN_PREPARACION, OrderStatus::LISTA];
+                    $nonCancelledItemStatuses = [OrderItemStatus::CANCELADO, OrderItemStatus::ELIMINADO];
+
+                    $reservedDishes = (float) DB::table('order_items')
+                        ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                        ->join('order_statuses', 'orders.order_status_id', '=', 'order_statuses.id')
+                        ->join('order_item_statuses', 'order_items.order_item_status_id', '=', 'order_item_statuses.id')
+                        ->join('dish_recipes', 'order_items.dish_id', '=', 'dish_recipes.dish_id')
+                        ->whereIn('order_statuses.name', $activeOrderStatuses)
+                        ->whereNotIn('order_item_statuses.name', $nonCancelledItemStatuses)
+                        ->where('dish_recipes.supply_id', $supplyId)
+                        ->sum(DB::raw('order_items.quantity * dish_recipes.required_quantity'));
+
+                    $reservedComplements = (float) DB::table('order_item_complements')
+                        ->join('order_items', 'order_item_complements.order_item_id', '=', 'order_items.id')
+                        ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                        ->join('order_statuses', 'orders.order_status_id', '=', 'order_statuses.id')
+                        ->join('order_item_statuses', 'order_items.order_item_status_id', '=', 'order_item_statuses.id')
+                        ->join('complement_supplies', 'order_item_complements.complement_id', '=', 'complement_supplies.complement_id')
+                        ->whereIn('order_statuses.name', $activeOrderStatuses)
+                        ->whereNotIn('order_item_statuses.name', $nonCancelledItemStatuses)
+                        ->where('complement_supplies.supply_id', $supplyId)
+                        ->sum(DB::raw('order_item_complements.quantity * complement_supplies.required_quantity'));
+
+                    $totalReserved = round($reservedDishes + $reservedComplements, 2);
+                    $availableStock = max(0.00, round((float) $supply->current_stock - $totalReserved, 2));
+
+                    if ($needed > $availableStock) {
+                        $insufficientSupplies[] = [
+                            'supply_id' => $supply->id,
+                            'name' => $supply->name,
+                            'required' => round($needed, 2),
+                            'available' => round($availableStock, 2),
+                            'current_stock' => (float) $supply->current_stock,
+                            'reserved_stock' => $totalReserved,
+                            'unit' => $supply->measurementUnit?->abbreviation ?? $supply->measurementUnit?->name ?? '',
+                        ];
+                    }
+                }
+
+                if (count($insufficientSupplies) > 0) {
+                    return response()->json([
+                        'message' => 'No hay suficientes insumos disponibles para preparar los productos adicionales solicitados.',
+                        'insufficient_supplies' => $insufficientSupplies,
+                    ], 422);
+                }
+
+                // 5. Guardar nuevos ítems y sus complementos
+                $newItemStatusName = $currentStatus === OrderStatus::EN_PREPARACION
+                    ? OrderItemStatus::EN_PREPARACION
+                    : OrderItemStatus::PENDIENTE;
+                $newItemStatus = OrderItemStatus::query()->where('name', $newItemStatusName)->firstOrFail();
+
+                foreach ($itemsToAddData as $data) {
+                    $dish = $data['dish'];
+                    $quantity = $data['quantity'];
+                    $unitPrice = (float) $dish->price;
+                    $subtotal = round($unitPrice * $quantity, 2);
+
+                    $orderItem = OrderItem::query()->create([
+                        'order_id' => $order->id,
+                        'dish_id' => $dish->id,
+                        'order_item_status_id' => $newItemStatus->id,
+                        'quantity' => $quantity,
+                        'unit_price' => $unitPrice,
+                        'subtotal' => $subtotal,
+                        'notes' => $data['notes'],
+                    ]);
+
+                    foreach ($data['complements'] as $compData) {
+                        $complement = $compData['complement'];
+                        $compQuantity = (int) $compData['quantity'];
+                        $compUnitPrice = (float) ($complement->extra_price ?? 0.00);
+                        $compSubtotal = round($compUnitPrice * $compQuantity, 2);
+
+                        OrderItemComplement::query()->create([
+                            'order_item_id' => $orderItem->id,
+                            'complement_id' => $complement->id,
+                            'quantity' => $compQuantity,
+                            'unit_price' => $compUnitPrice,
+                            'subtotal' => $compSubtotal,
+                        ]);
+                    }
+                }
+            }
+
+            // 6. Actualizar notas de la comanda si fueron provistas
+            if (isset($validated['notes'])) {
+                $order->notes = trim((string) $validated['notes']);
+                $order->save();
+            }
+
+            return $order;
+        });
+
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        // Cargar todas las relaciones necesarias para el recurso y WebSocket
+        $result->load([
+            'restaurantTable.status',
+            'waiter.role',
+            'type',
+            'status',
+            'items.dish.category',
+            'items.status',
+            'items.complements.complement',
+        ]);
+
+        // 7. Emitir evento WebSocket hacia la pantalla de cocina
+        $details = [
+            'removed_item_ids' => $validated['remove_item_ids'] ?? [],
+            'added_items_count' => count($validated['add_items'] ?? []),
+            'notes_updated' => isset($validated['notes']),
+        ];
+        broadcast(new ComandaModificada($result, $details));
+
+        return response()->json([
+            'message' => 'Comanda modificada exitosamente y enviada a cocina.',
             'order' => new OrderResource($result),
         ], 200);
     }
