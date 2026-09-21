@@ -2878,6 +2878,531 @@
                 ]
             }
         },
+        "/api/supply-alerts": {
+            "get": {
+                "tags": [
+                    "Alertas de Insumos"
+                ],
+                "summary": "Listar alertas de reposición",
+                "description": "Obtiene el listado paginado de alertas de reposición de insumos registradas, permitiendo filtrar por estado (pendientes o atendidas), origen (manual o automático), insumo y rango de fechas.",
+                "operationId": "listSupplyAlerts",
+                "parameters": [
+                    {
+                        "name": "pending",
+                        "in": "query",
+                        "description": "Filtrar únicamente alertas pendientes sin atender",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filtrar por nombre clave del estado (pending o attended)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "alert_status_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del estado de alerta",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "origin",
+                        "in": "query",
+                        "description": "Filtrar por nombre clave del origen (manual o automatic)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "alert_origin_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del origen de alerta",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del producto o insumo",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por observaciones o nombre/código del insumo",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de registros por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de alertas obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SupplyAlertResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Alertas de Insumos"
+                ],
+                "summary": "Generar alerta manual de reposición",
+                "description": "Registra manualmente una alerta de reposición para un producto o insumo y notifica por correo electrónico a la administradora.",
+                "operationId": "createSupplyAlert",
+                "requestBody": {
+                    "description": "Datos de la alerta manual",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSupplyAlertRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Alerta de reposición generada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Alerta de reposición generada exitosamente."
+                                        },
+                                        "alert": {
+                                            "$ref": "#/components/schemas/SupplyAlertResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (insumo inexistente o inactivo).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El producto o insumo seleccionado no existe en el catálogo."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/supply-alerts/{id}": {
+            "get": {
+                "tags": [
+                    "Alertas de Insumos"
+                ],
+                "summary": "Consultar detalle de una alerta de reposición",
+                "description": "Obtiene la información detallada de una alerta de reposición específica.",
+                "operationId": "getSupplyAlert",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la alerta a consultar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Alerta obtenida exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "alert": {
+                                            "$ref": "#/components/schemas/SupplyAlertResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Alerta no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Alerta de reposición no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/supply-alerts/{id}/attend": {
+            "post": {
+                "tags": [
+                    "Alertas de Insumos"
+                ],
+                "summary": "Atender alerta de reposición",
+                "description": "Marca como atendida una alerta de reposición pendiente y opcionalmente la vincula con una solicitud de compra. Si la alerta ya fue atendida previamente, rechaza la operación.",
+                "operationId": "attendSupplyAlert",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la alerta a marcar como atendida",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos opcionales para atender la alerta",
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AttendSupplyAlertRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Alerta marcada como atendida exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Alerta de reposición marcada como atendida exitosamente."
+                                        },
+                                        "alert": {
+                                            "$ref": "#/components/schemas/SupplyAlertResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "La alerta ya fue atendida previamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La alerta de reposición ya ha sido atendida previamente y no puede marcarse nuevamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Alerta no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Alerta de reposición no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/alert-statuses": {
+            "get": {
+                "tags": [
+                    "Alertas de Insumos"
+                ],
+                "summary": "Listar estados de alertas",
+                "description": "Obtiene el catálogo de estados disponibles para las alertas de reposición (pending y attended).",
+                "operationId": "listAlertStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de estados obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/AlertStatusResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/alert-origins": {
+            "get": {
+                "tags": [
+                    "Alertas de Insumos"
+                ],
+                "summary": "Listar orígenes de alertas",
+                "description": "Obtiene el catálogo de orígenes disponibles para las alertas de reposición (manual y automatic).",
+                "operationId": "listAlertOrigins",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de orígenes obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/AlertOriginResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/supplies": {
             "get": {
                 "tags": [
@@ -4787,6 +5312,56 @@
                     "reason": "Ajuste revisado y verificado con conteo físico en almacén."
                 }
             },
+            "AttendSupplyAlertRequest": {
+                "title": "Attend Supply Alert Request",
+                "description": "Datos opcionales para marcar como atendida una alerta de reposición",
+                "properties": {
+                    "purchase_request_id": {
+                        "description": "ID de la solicitud de compra vinculada (opcional)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Notas u observaciones al atender la alerta",
+                        "type": "string",
+                        "example": "Insumo incluido en solicitud de abastecimiento",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "purchase_request_id": 1,
+                    "notes": "Se generó la solicitud de compra SC-0001 para reposición inmediata."
+                }
+            },
+            "CreateSupplyAlertRequest": {
+                "title": "Create Supply Alert Request",
+                "description": "Datos necesarios para generar manualmente una alerta de reposición de insumo",
+                "required": [
+                    "supply_id"
+                ],
+                "properties": {
+                    "supply_id": {
+                        "description": "ID del producto o insumo del catálogo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "notes": {
+                        "description": "Observación o motivo de la alerta manual",
+                        "type": "string",
+                        "example": "Quedan pocas unidades físicas en bodega",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supply_id": 1,
+                    "notes": "El insumo se está agotando más rápido de lo habitual en turno de cocina."
+                }
+            },
             "CreateSupplyRequest": {
                 "title": "Create Supply Request",
                 "description": "Datos necesarios para dar de alta un producto o insumo en el inventario",
@@ -5042,6 +5617,40 @@
                         "description": "Nombre o clave del estado de ajuste",
                         "type": "string",
                         "example": "pendiente_aprobacion"
+                    }
+                },
+                "type": "object"
+            },
+            "AlertOriginResource": {
+                "title": "Alert Origin Resource",
+                "description": "Origen de la alerta de reposición (manual o automática)",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del origen",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre o clave del origen de alerta",
+                        "type": "string",
+                        "example": "manual"
+                    }
+                },
+                "type": "object"
+            },
+            "AlertStatusResource": {
+                "title": "Alert Status Resource",
+                "description": "Estado de la alerta de reposición (pending o attended)",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único del estado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre o clave del estado de la alerta",
+                        "type": "string",
+                        "example": "pending"
                     }
                 },
                 "type": "object"
@@ -5408,6 +6017,101 @@
                 },
                 "type": "object"
             },
+            "SupplyAlertResource": {
+                "title": "Supply Alert Resource",
+                "description": "Información completa de una alerta de reposición de insumo",
+                "properties": {
+                    "id": {
+                        "description": "Identificador único de la alerta",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "description": "ID del producto o insumo relacionado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SupplyResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "alert_origin_id": {
+                        "description": "ID del origen de la alerta",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "origin": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/AlertOriginResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "origin_name": {
+                        "description": "Nombre clave del origen (manual o automatic)",
+                        "type": "string",
+                        "example": "automatic"
+                    },
+                    "alert_status_id": {
+                        "description": "ID del estado de la alerta",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/AlertStatusResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "status_name": {
+                        "description": "Nombre clave del estado (pending o attended)",
+                        "type": "string",
+                        "example": "pending"
+                    },
+                    "user_id": {
+                        "description": "ID del usuario que originó o registró la alerta",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "user": {
+                        "description": "Información básica del usuario responsable",
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "purchase_request_id": {
+                        "description": "ID de la solicitud de compra vinculada al atender (si aplica)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Observaciones o motivo de la alerta",
+                        "type": "string",
+                        "example": "El insumo se está agotando rápidamente en turno",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "description": "Fecha y hora de generación de la alerta",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "description": "Fecha y hora de última actualización",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-20T12:00:00.000000Z"
+                    }
+                },
+                "type": "object"
+            },
             "SupplyResource": {
                 "title": "Supply Resource",
                 "description": "Información completa del producto o insumo de almacén",
@@ -5573,6 +6277,10 @@
         {
             "name": "Gestión de Usuarios",
             "description": "Gestión de Usuarios"
+        },
+        {
+            "name": "Alertas de Insumos",
+            "description": "Alertas de Insumos"
         }
     ]
 }

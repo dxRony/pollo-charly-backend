@@ -11,6 +11,7 @@ use App\Http\Controllers\DishController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SupplyAlertController;
 use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +53,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/inventory-movements', [InventoryMovementController::class, 'store']);
     Route::get('/inventory-movements/{id}', [InventoryMovementController::class, 'show']);
 
+    Route::get('/alert-statuses', [SupplyAlertController::class, 'statuses']);
+    Route::get('/alert-origins', [SupplyAlertController::class, 'origins']);
+    Route::get('/supply-alerts', [SupplyAlertController::class, 'index']);
+    Route::post('/supply-alerts', [SupplyAlertController::class, 'store']);
+    Route::get('/supply-alerts/{id}', [SupplyAlertController::class, 'show']);
+
     Route::middleware('role:Administrador')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
         Route::apiResource('users', UserController::class);
@@ -77,6 +84,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/inventory-movements/{id}/approve', [InventoryMovementController::class, 'approveAdjustment']);
         Route::post('/inventory-movements/{id}/reject', [InventoryMovementController::class, 'rejectAdjustment']);
+
+        Route::post('/supply-alerts/{id}/attend', [SupplyAlertController::class, 'attend']);
     });
 });
 

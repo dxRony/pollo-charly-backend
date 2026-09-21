@@ -705,13 +705,16 @@ class InventoryMovementController extends Controller
                 ->exists();
 
             if (! $hasPendingAlert) {
-                SupplyAlert::query()->create([
+                $alert = SupplyAlert::query()->create([
                     'supply_id' => $supply->id,
                     'alert_origin_id' => $automaticOrigin->id,
                     'alert_status_id' => $pendingStatus->id,
                     'user_id' => $user->id,
                     'notes' => 'Alerta automática generada al quedar la existencia por debajo del mínimo de referencia (' . $supply->minimum_stock . '). Existencia actual: ' . $supply->current_stock,
                 ]);
+
+                // Notificar por correo a las administradoras del sistema
+                SupplyAlertController::notifyAdministrators($alert);
             }
         }
     }
