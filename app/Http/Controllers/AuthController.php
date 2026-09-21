@@ -27,17 +27,38 @@ class AuthController extends Controller
         responses: [
             new OA\Response(
                 response: 200,
-                description: 'Autenticación exitosa. Retorna los datos del usuario y el token Bearer.',
+                description: 'Autenticación exitosa (retorna token o indica si se requiere verificación 2FA).',
                 content: new OA\JsonContent(
                     properties: [
+                        new OA\Property(
+                            property: 'two_factor_required',
+                            description: 'Indica si se requiere completar el segundo factor (código por correo)',
+                            type: 'boolean',
+                            example: false
+                        ),
+                        new OA\Property(
+                            property: 'message',
+                            description: 'Mensaje informativo en caso de requerirse 2FA',
+                            type: 'string',
+                            nullable: true,
+                            example: 'Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.'
+                        ),
+                        new OA\Property(
+                            property: 'email',
+                            description: 'Correo al que fue enviado el código 2FA',
+                            type: 'string',
+                            nullable: true,
+                            example: 'admin@pollocharly.com'
+                        ),
                         new OA\Property(
                             property: 'user',
                             ref: '#/components/schemas/UserResource'
                         ),
                         new OA\Property(
                             property: 'token',
-                            description: 'Token de acceso Bearer para peticiones subsecuentes',
+                            description: 'Token de acceso Bearer (presente cuando 2FA no es requerido)',
                             type: 'string',
+                            nullable: true,
                             example: '1|qWeRtYuIoP1234567890abcdef...'
                         ),
                     ]
@@ -45,7 +66,7 @@ class AuthController extends Controller
             ),
             new OA\Response(
                 response: 422,
-                description: 'Error de validación o credenciales incorrectas.',
+                description: 'Error de validación o credenciales incorrectas / cuenta desactivada.',
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(
@@ -70,7 +91,16 @@ class AuthController extends Controller
             $request->validated('password'),
         );
 
+        if ($result['two_factor_required'] ?? false) {
+            return response()->json([
+                'two_factor_required' => true,
+                'message' => 'Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.',
+                'email' => $result['email'],
+            ]);
+        }
+
         return response()->json([
+            'two_factor_required' => false,
             'user' => new UserResource($result['user']),
             'token' => $result['token'],
         ]);

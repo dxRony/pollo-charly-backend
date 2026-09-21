@@ -44,18 +44,36 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Autenticación exitosa. Retorna los datos del usuario y el token Bearer.",
+                        "description": "Autenticación exitosa (retorna token o indica si se requiere verificación 2FA).",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "two_factor_required": {
+                                            "description": "Indica si se requiere completar el segundo factor (código por correo)",
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "description": "Mensaje informativo en caso de requerirse 2FA",
+                                            "type": "string",
+                                            "example": "Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.",
+                                            "nullable": true
+                                        },
+                                        "email": {
+                                            "description": "Correo al que fue enviado el código 2FA",
+                                            "type": "string",
+                                            "example": "admin@pollocharly.com",
+                                            "nullable": true
+                                        },
                                         "user": {
                                             "$ref": "#/components/schemas/UserResource"
                                         },
                                         "token": {
-                                            "description": "Token de acceso Bearer para peticiones subsecuentes",
+                                            "description": "Token de acceso Bearer (presente cuando 2FA no es requerido)",
                                             "type": "string",
-                                            "example": "1|qWeRtYuIoP1234567890abcdef..."
+                                            "example": "1|qWeRtYuIoP1234567890abcdef...",
+                                            "nullable": true
                                         }
                                     },
                                     "type": "object"
@@ -64,7 +82,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error de validación o credenciales incorrectas.",
+                        "description": "Error de validación o credenciales incorrectas / cuenta desactivada.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -303,6 +321,302 @@
                 }
             }
         },
+        "/api/2fa/verify": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Verificar código 2FA y completar inicio de sesión",
+                "description": "Valida el código temporal de 6 dígitos enviado por correo. Si es válido y está vigente (5 min), emite el token de autenticación Bearer (Sanctum). Incluye bloqueo temporal tras 5 intentos fallidos (15 min).",
+                "operationId": "verifyTwoFactor",
+                "requestBody": {
+                    "description": "Correo y código de verificación",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyTwoFactorRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Código válido. Inicio de sesión completado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Autenticación de dos factores completada exitosamente."
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        },
+                                        "token": {
+                                            "type": "string",
+                                            "example": "1|qWeRtYuIoP1234567890abcdef..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Código incorrecto, expirado o sin sesión 2FA activa.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El código de verificación ingresado es incorrecto."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "code": [
+                                                    "El código de verificación ingresado es incorrecto."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos fallidos. Bloqueo temporal por 15 minutos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Demasiados intentos fallidos. La verificación de dos factores ha sido bloqueada temporalmente. Por favor intenta de nuevo en 15 minutos."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/2fa/resend": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Reenviar código de verificación 2FA",
+                "description": "Genera un nuevo código de 6 dígitos con vigencia de 5 minutos y lo envía al correo. Requiere una espera mínima de 60 segundos entre solicitudes.",
+                "operationId": "resendTwoFactor",
+                "requestBody": {
+                    "description": "Correo electrónico del usuario",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResendTwoFactorRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Código reenviado satisfactoriamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Se ha enviado un nuevo código de verificación a tu correo electrónico."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes. Debe esperar el tiempo de enfriamiento (60 segundos).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Debes esperar 60 segundos antes de solicitar un nuevo código de verificación."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/2fa/status": {
+            "get": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Consultar estado del 2FA",
+                "description": "Consulta si el usuario autenticado tiene habilitada la verificación de dos factores (2FA).",
+                "operationId": "getTwoFactorStatus",
+                "responses": {
+                    "200": {
+                        "description": "Estado del 2FA consultado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "two_factor_enabled": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/2fa/enable": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Habilitar 2FA en la cuenta",
+                "description": "Activa la verificación de dos factores para la cuenta del usuario autenticado.",
+                "operationId": "enableTwoFactor",
+                "responses": {
+                    "200": {
+                        "description": "2FA habilitado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La autenticación de dos factores ha sido habilitada exitosamente."
+                                        },
+                                        "two_factor_enabled": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/2fa/disable": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Deshabilitar 2FA en la cuenta",
+                "description": "Desactiva la verificación de dos factores para la cuenta del usuario autenticado.",
+                "operationId": "disableTwoFactor",
+                "responses": {
+                    "200": {
+                        "description": "2FA deshabilitado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La autenticación de dos factores ha sido deshabilitada exitosamente."
+                                        },
+                                        "two_factor_enabled": {
+                                            "type": "boolean",
+                                            "example": false
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/ping": {
             "get": {
                 "tags": [
@@ -384,6 +698,25 @@
                     "password": "password"
                 }
             },
+            "ResendTwoFactorRequest": {
+                "title": "Resend Two-Factor Code Request",
+                "description": "Datos requeridos para reenviar un nuevo código de verificación de dos factores (2FA)",
+                "required": [
+                    "email"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "Correo electrónico del usuario al que se reenviará el código",
+                        "type": "string",
+                        "format": "email",
+                        "example": "admin@pollocharly.com"
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "email": "admin@pollocharly.com"
+                }
+            },
             "ResetPasswordRequest": {
                 "title": "Reset Password Request",
                 "description": "Datos necesarios para restablecer la contraseña",
@@ -424,6 +757,34 @@
                     "email": "admin@pollocharly.com",
                     "password": "nuevaPassword123",
                     "password_confirmation": "nuevaPassword123"
+                }
+            },
+            "VerifyTwoFactorRequest": {
+                "title": "Verify Two-Factor Authentication Request",
+                "description": "Datos requeridos para validar el código temporal de verificación de dos factores (2FA)",
+                "required": [
+                    "email",
+                    "code"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "Correo electrónico del usuario que inició sesión",
+                        "type": "string",
+                        "format": "email",
+                        "example": "admin@pollocharly.com"
+                    },
+                    "code": {
+                        "description": "Código de verificación de 6 dígitos numéricos enviado al correo",
+                        "type": "string",
+                        "example": "123456",
+                        "maxLength": 6,
+                        "minLength": 6
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "email": "admin@pollocharly.com",
+                    "code": "123456"
                 }
             },
             "UserRole": {
