@@ -1,14 +1,10 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PingController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/ping', function () {
-    return response()->json([
-        'message' => 'pong desde Laravel',
-        'timestamp' => now()->toDateTimeString(),
-    ]);
-});
+Route::get('/ping', PingController::class);
 
 Route::post('/login', [AuthController::class, 'login']);
 
