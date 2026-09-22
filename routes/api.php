@@ -11,6 +11,7 @@ use App\Http\Controllers\DishController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RestaurantTableController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
@@ -118,6 +119,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/restaurant-tables/{id}', [RestaurantTableController::class, 'update']);
         Route::patch('/restaurant-tables/{id}/status', [RestaurantTableController::class, 'toggleStatus']);
         Route::delete('/restaurant-tables/{id}', [RestaurantTableController::class, 'destroy']);
+
+        Route::get('/reports/dashboard', [ReportController::class, 'dashboard']);
+        Route::get('/reports/sales', [ReportController::class, 'sales']);
+        Route::get('/reports/top-dishes', [ReportController::class, 'topDishes']);
+        Route::get('/reports/inventory-movements', [ReportController::class, 'inventoryMovements']);
+        Route::get('/reports/supply-alerts', [ReportController::class, 'supplyAlerts']);
     });
 });
 
