@@ -965,7 +965,16 @@ class OrderController extends Controller
                 }
             }
 
-            // 6. Actualizar notas de la comanda si fueron provistas
+            // 6. Si se agregaron platillos nuevos a una comanda que ya estaba lista, reabrir su
+            // preparación: el nuevo ítem quedó en estado "pendiente" y debe pasar por cocina
+            // antes de poder cobrarse, así que la comanda vuelve a "en_preparacion".
+            if (count($itemsToAddData) > 0 && $currentStatus === OrderStatus::LISTA) {
+                $reopenedStatus = OrderStatus::query()->where('name', OrderStatus::EN_PREPARACION)->firstOrFail();
+                $order->order_status_id = $reopenedStatus->id;
+                $order->save();
+            }
+
+            // 7. Actualizar notas de la comanda si fueron provistas
             if (isset($validated['notes'])) {
                 $order->notes = trim((string) $validated['notes']);
                 $order->save();

@@ -69,12 +69,15 @@ class Order extends Model
 
         $statusName = $this->relationLoaded('status') && $this->status ? $this->status->name : null;
 
-        if ($this->preparation_start_time !== null || $statusName === OrderStatus::EN_PREPARACION) {
-            return 'La comanda ya está en preparación en cocina. Únicamente se permite la adición de productos.';
-        }
-
+        // El estado (Lista/Entregada) es más específico que el timestamp genérico de
+        // preparation_start_time, que nunca se limpia una vez iniciada la preparación —
+        // por eso se evalúa primero, o el mensaje de "en preparación" nunca se actualizaría.
         if ($statusName === OrderStatus::LISTA || $statusName === OrderStatus::ENTREGADA) {
             return 'La comanda ya finalizó su preparación en cocina. Únicamente se permite la adición de productos.';
+        }
+
+        if ($this->preparation_start_time !== null || $statusName === OrderStatus::EN_PREPARACION) {
+            return 'La comanda ya está en preparación en cocina. Únicamente se permite la adición de productos.';
         }
 
         if ($this->created_at !== null && now()->greaterThan($this->created_at->copy()->addMinutes($timeLimitMinutes))) {
