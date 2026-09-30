@@ -103,6 +103,4 @@ resource "aws_elastic_beanstalk_environment" "api" {
   lifecycle {
     ignore_changes = [version_label]
   }
-
-  tags = { Name = "${local.name}-api" }
 }

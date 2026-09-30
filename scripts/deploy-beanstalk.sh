@@ -2,6 +2,7 @@
 # Sube un paquete a Elastic Beanstalk y despliega esa versión en el entorno.
 # Uso: scripts/deploy-beanstalk.sh build/pollo-charly-api-<version>.zip
 set -euo pipefail
+export AWS_PAGER=""
 
 BUNDLE="${1:?Uso: scripts/deploy-beanstalk.sh build/<paquete>.zip}"
 APPLICATION="${EB_APPLICATION:-pollo-charly-prod-api}"

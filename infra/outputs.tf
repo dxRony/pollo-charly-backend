@@ -37,3 +37,23 @@ output "ssm_prefix" {
   description = "Prefijo de los parámetros de configuración en Parameter Store."
   value       = local.ssm_prefix
 }
+
+output "site_url" {
+  description = "URL pública del sistema (frontend y API) servida por CloudFront."
+  value       = "https://${aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "cloudfront_distribution_id" {
+  description = "ID de la distribución de CloudFront (para invalidar la caché al desplegar el frontend)."
+  value       = aws_cloudfront_distribution.main.id
+}
+
+output "frontend_bucket" {
+  description = "Bucket S3 donde se publica el build del frontend."
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "reverb_app_key" {
+  description = "Clave pública de Reverb que el frontend necesita al compilar."
+  value       = random_string.reverb_app_key.result
+}
