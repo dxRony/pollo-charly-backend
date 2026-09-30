@@ -40,6 +40,17 @@ variable "api_instance_type" {
   default     = "t3.micro"
 }
 
+variable "initial_admin_email" {
+  description = "Correo del administrador inicial del sistema (debe ser un buzón real para recibir 2FA y recuperación de contraseña)."
+  type        = string
+}
+
+variable "initial_admin_name" {
+  description = "Nombre del administrador inicial."
+  type        = string
+  default     = "Administrador Pollo Charly"
+}
+
 variable "db_name" {
   description = "Nombre de la base de datos de la aplicación."
   type        = string
