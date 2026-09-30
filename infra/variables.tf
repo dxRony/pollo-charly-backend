@@ -51,6 +51,18 @@ variable "initial_admin_name" {
   default     = "Administrador Pollo Charly"
 }
 
+variable "ses_sender_email" {
+  description = "Remitente de los correos del sistema. Si es null se usa el correo del administrador inicial."
+  type        = string
+  default     = null
+}
+
+variable "ses_extra_recipients" {
+  description = "Otros correos a verificar en SES. Mientras la cuenta esté en sandbox, solo se puede enviar a correos verificados."
+  type        = list(string)
+  default     = []
+}
+
 variable "db_name" {
   description = "Nombre de la base de datos de la aplicación."
   type        = string

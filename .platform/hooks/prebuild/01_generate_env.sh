@@ -43,6 +43,8 @@ REVERB_APP_ACTIVITY_TIMEOUT=20
 REVERB_APP_PING_INTERVAL=30
 EOF
 
+printf 'AWS_DEFAULT_REGION="%s"\n' "$REGION" >> .env
+
 aws ssm get-parameters-by-path \
   --path "$SSM_PREFIX" \
   --recursive \
