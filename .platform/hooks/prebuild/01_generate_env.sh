@@ -55,7 +55,7 @@ aws ssm get-parameters-by-path \
   done >> .env
 
 add_default() {
-  grep -q "^$1=" .env || echo "$1=$2" >> .env
+  grep -q "^$1=" .env || printf '%s="%s"\n' "$1" "$2" >> .env
 }
 
 add_default APP_URL "http://localhost"
