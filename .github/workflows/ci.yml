@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Pruebas (Pest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pdo_sqlite, sqlite3, gd, zip, intl, bcmath, sockets, pcntl
+          coverage: none
+          tools: composer:v2
+
+      - name: Instalar dependencias
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Preparar entorno
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Ejecutar pruebas
+        run: php artisan test
+
+  infraestructura:
+    name: Infraestructura (Terraform)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+
+      - name: Formato
+        run: terraform fmt -check -recursive
+
+      - name: Inicializar
+        run: terraform init -backend=false -input=false
+
+      - name: Validar
+        run: terraform validate
+
+  scripts:
+    name: Scripts de despliegue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sintaxis y permisos de ejecución
+        run: |
+          for f in scripts/*.sh .platform/hooks/*/*.sh; do
+            bash -n "$f"
+            test -x "$f" || { echo "$f no es ejecutable"; exit 1; }
+          done

@@ -463,7 +463,11 @@ class SupplyAlertController extends Controller
             ->get();
 
         foreach ($admins as $admin) {
-            $admin->notify(new SupplyAlertNotification($alert));
+            try {
+                $admin->notify(new SupplyAlertNotification($alert));
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
     }
 }
