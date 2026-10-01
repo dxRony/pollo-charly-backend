@@ -26,7 +26,20 @@ aws elasticbeanstalk update-environment \
 echo "Desplegando $VERSION en $ENVIRONMENT (puede tardar unos minutos)..."
 aws elasticbeanstalk wait environment-updated --environment-names "$ENVIRONMENT"
 
-aws elasticbeanstalk describe-environments \
+DEPLOYED="$(aws elasticbeanstalk describe-environments \
   --environment-names "$ENVIRONMENT" \
-  --query 'Environments[0].[Status,Health,VersionLabel]' \
-  --output text
+  --query 'Environments[0].VersionLabel' \
+  --output text)"
+
+if [ "$DEPLOYED" != "$VERSION" ]; then
+  echo "El despliegue falló: el entorno sigue en '$DEPLOYED' y se esperaba '$VERSION'. Últimos errores:" >&2
+  aws elasticbeanstalk describe-events \
+    --environment-name "$ENVIRONMENT" \
+    --severity ERROR \
+    --max-items 5 \
+    --query 'Events[].[EventDate,Message]' \
+    --output text >&2
+  exit 1
+fi
+
+echo "Desplegado: $DEPLOYED"
