@@ -57,3 +57,13 @@ output "reverb_app_key" {
   description = "Clave pública de Reverb que el frontend necesita al compilar."
   value       = random_string.reverb_app_key.result
 }
+
+output "github_backend_user" {
+  description = "Usuario IAM que usa GitHub Actions para desplegar la API."
+  value       = aws_iam_user.github_backend.name
+}
+
+output "github_frontend_user" {
+  description = "Usuario IAM que usa GitHub Actions para publicar el frontend."
+  value       = aws_iam_user.github_frontend.name
+}
