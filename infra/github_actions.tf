@@ -94,6 +94,25 @@ data "aws_iam_policy_document" "github_backend_deploy" {
     resources = ["*"]
   }
 
+  statement {
+    sid = "CrearYRotarRespaldosSemanales"
+    actions = [
+      "rds:CreateDBSnapshot",
+      "rds:DeleteDBSnapshot",
+      "rds:AddTagsToResource",
+    ]
+    resources = [
+      aws_db_instance.main.arn,
+      "arn:aws:rds:${var.aws_region}:${local.account_id}:snapshot:weekly-*",
+    ]
+  }
+
+  statement {
+    sid       = "ConsultarRespaldos"
+    actions   = ["rds:DescribeDBSnapshots"]
+    resources = ["*"]
+  }
+
   # Durante un despliegue Beanstalk pausa y reanuda los procesos del grupo de autoescalado
   # para que no reemplace la instancia a mitad de la actualización.
   statement {
