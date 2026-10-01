@@ -1,0 +1,55 @@
+name: Desplegar API
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: desplegar-api
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  SITE_URL: https://d1nyq5ujkrljd1.cloudfront.net
+
+jobs:
+  desplegar:
+    name: Empaquetar y desplegar en Elastic Beanstalk
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, gd, zip, intl, bcmath, sockets, pcntl
+          coverage: none
+          tools: composer:v2
+
+      - name: Empaquetar
+        run: ./scripts/build-beanstalk-bundle.sh "${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Identidad de AWS
+        run: aws sts get-caller-identity --query Arn --output text
+
+      - name: Desplegar
+        run: ./scripts/deploy-beanstalk.sh build/pollo-charly-api-*.zip
+
+      - name: Verificar que la API responde
+        run: |
+          for intento in 1 2 3 4 5 6; do
+            curl -fsS "$SITE_URL/api/ping" && exit 0
+            sleep 10
+          done
+          exit 1
