@@ -32,7 +32,7 @@ jobs:
           tools: composer:v2
 
       - name: Empaquetar
-        run: ./scripts/build-beanstalk-bundle.sh "${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+        run: ./scripts/build-beanstalk-bundle.sh "${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA::7}"
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:
