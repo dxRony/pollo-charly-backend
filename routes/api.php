@@ -8,6 +8,8 @@ use App\Http\Controllers\PingController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ComplementController;
 use App\Http\Controllers\DailyMenuController;
+use App\Http\Controllers\DeliveryCatalogController;
+use App\Http\Controllers\DeliveryIncidentController;
 use App\Http\Controllers\DishController;
 use App\Http\Controllers\DishImageController;
 use App\Http\Controllers\InventoryMovementController;
@@ -17,6 +19,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RestaurantTableController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplyAlertController;
 use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\UserController;
@@ -90,11 +93,29 @@ Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
     Route::post('/sales', [SaleController::class, 'store']);
     Route::get('/sales/{id}', [SaleController::class, 'show']);
 
+    Route::get('/delivery-days', [DeliveryCatalogController::class, 'deliveryDays']);
+    Route::get('/delivery-incident-types', [DeliveryCatalogController::class, 'incidentTypes']);
+    Route::get('/delivery-incident-statuses', [DeliveryCatalogController::class, 'incidentStatuses']);
+    Route::get('/suppliers', [SupplierController::class, 'index']);
+    Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
+    Route::get('/suppliers/{id}/history', [SupplierController::class, 'history']);
+    Route::post('/suppliers/{id}/deliveries', [SupplierController::class, 'recordDelivery']);
+    Route::get('/delivery-incidents', [DeliveryIncidentController::class, 'index']);
+    Route::post('/delivery-incidents', [DeliveryIncidentController::class, 'store']);
+    Route::get('/delivery-incidents/{id}', [DeliveryIncidentController::class, 'show']);
+
     Route::middleware('role:Administrador')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
         Route::apiResource('users', UserController::class);
         Route::patch('/users/{user}/status', [UserController::class, 'toggleStatus']);
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+
+        Route::post('/suppliers', [SupplierController::class, 'store']);
+        Route::put('/suppliers/{id}', [SupplierController::class, 'update']);
+        Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
+        Route::patch('/suppliers/{id}/status', [SupplierController::class, 'toggleStatus']);
+        Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
+        Route::patch('/delivery-incidents/{id}/status', [DeliveryIncidentController::class, 'updateStatus']);
 
         Route::post('/uploads/dish-image', [DishImageController::class, 'store'])->middleware('throttle:20,1');
         Route::delete('/uploads/dish-image', [DishImageController::class, 'destroy'])->middleware('throttle:60,1');
