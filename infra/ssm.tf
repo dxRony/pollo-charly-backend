@@ -93,3 +93,16 @@ resource "aws_ssm_parameter" "reverb_app_secret" {
   type  = "SecureString"
   value = random_password.reverb_app_secret.result
 }
+
+# Credenciales de Cloudinary (imágenes de platillos). El valor real, con el formato
+# cloudinary://<api_key>:<api_secret>@<cloud_name>, se carga fuera de Terraform con
+# `aws ssm put-parameter --overwrite` para que el secreto no quede en el estado ni en git.
+resource "aws_ssm_parameter" "cloudinary_url" {
+  name  = "${local.ssm_prefix}/CLOUDINARY_URL"
+  type  = "SecureString"
+  value = "sin-configurar"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
