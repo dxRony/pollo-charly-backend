@@ -357,6 +357,30 @@ class SupplyAlertController extends Controller
 
             if ($request->filled('purchase_request_id')) {
                 $alert->purchase_request_id = (int) $request->input('purchase_request_id');
+            } else {
+                $pendingPrStatus = \App\Models\PurchaseRequestStatus::query()->firstOrCreate(
+                    ['name' => \App\Models\PurchaseRequestStatus::PENDIENTE],
+                    ['name' => \App\Models\PurchaseRequestStatus::PENDIENTE]
+                );
+
+                $minStock = (float) ($alert->supply?->minimum_stock ?? 10.0);
+                $currStock = (float) ($alert->supply?->current_stock ?? 0.0);
+                $suggestedQty = max(1.0, round(($minStock * 2) - $currStock, 2));
+
+                $purchaseRequest = \App\Models\PurchaseRequest::query()->create([
+                    'requester_user_id' => $request->user()?->id ?? $alert->user_id,
+                    'purchase_request_status_id' => $pendingPrStatus->id,
+                    'reason' => 'Solicitud generada a partir de la alerta de reposición #' . $alert->id . ' para el insumo ' . ($alert->supply?->name ?? 'N/A'),
+                ]);
+
+                \App\Models\PurchaseRequestItem::query()->create([
+                    'purchase_request_id' => $purchaseRequest->id,
+                    'supply_id' => $alert->supply_id,
+                    'suggested_quantity' => $suggestedQty,
+                    'approved_quantity' => null,
+                ]);
+
+                $alert->purchase_request_id = $purchaseRequest->id;
             }
 
             if ($request->filled('notes')) {
