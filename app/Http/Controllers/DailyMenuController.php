@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\DailyMenu\SyncDailyMenuBatchRequest;
 use App\Http\Requests\DailyMenu\ToggleDailyMenuDishRequest;
 use App\Http\Resources\DishResource;
+use App\Http\Resources\PublicDishResource;
 use App\Models\Dish;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class DailyMenuController extends Controller
                 description: 'Listado de platillos activos del menú del día (retorna array vacío si no hay ninguno marcado).',
                 content: new OA\JsonContent(
                     type: 'array',
-                    items: new OA\Items(ref: '#/components/schemas/DishResource')
+                    items: new OA\Items(ref: '#/components/schemas/PublicDishResource')
                 )
             ),
         ]
@@ -36,11 +37,14 @@ class DailyMenuController extends Controller
         $dishes = Dish::query()
             ->where('is_daily_menu', true)
             ->where('is_active', true)
-            ->with(['category', 'recipes.supply.measurementUnit', 'complements'])
+            ->with([
+                'category',
+                'complements' => fn ($query) => $query->where('is_active', true)->orderBy('name'),
+            ])
             ->orderBy('name')
             ->get();
 
-        return response()->json(DishResource::collection($dishes));
+        return response()->json(PublicDishResource::collection($dishes));
     }
 
     #[OA\Patch(

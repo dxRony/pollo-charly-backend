@@ -23,57 +23,50 @@
         }
     ],
     "paths": {
-        "/api/login": {
-            "post": {
+        "/api/me/password": {
+            "put": {
                 "tags": [
                     "Autenticación"
                 ],
-                "summary": "Iniciar sesión en el sistema",
-                "description": "Autentica a un usuario existente mediante sus credenciales y emite un token Bearer (Sanctum) para consumir los endpoints protegidos.",
-                "operationId": "login",
+                "summary": "Cambiar la contraseña del usuario autenticado",
+                "description": "Permite al usuario autenticado cambiar su propia contraseña verificando la contraseña actual. Cierra todas las demás sesiones activas y conserva la sesión actual.",
+                "operationId": "changePassword",
                 "requestBody": {
-                    "description": "Credenciales del usuario",
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/LoginRequest"
+                                "$ref": "#/components/schemas/ChangePasswordRequest"
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "Autenticación exitosa (retorna token o indica si se requiere verificación 2FA).",
+                        "description": "Contraseña actualizada correctamente.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "two_factor_required": {
-                                            "description": "Indica si se requiere completar el segundo factor (código por correo)",
-                                            "type": "boolean",
-                                            "example": false
-                                        },
                                         "message": {
-                                            "description": "Mensaje informativo en caso de requerirse 2FA",
                                             "type": "string",
-                                            "example": "Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.",
-                                            "nullable": true
-                                        },
-                                        "email": {
-                                            "description": "Correo al que fue enviado el código 2FA",
+                                            "example": "Contraseña actualizada correctamente. Se cerraron tus otras sesiones activas."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
                                             "type": "string",
-                                            "example": "admin@pollocharly.com",
-                                            "nullable": true
-                                        },
-                                        "user": {
-                                            "$ref": "#/components/schemas/UserResource"
-                                        },
-                                        "token": {
-                                            "description": "Token de acceso Bearer (presente cuando 2FA no es requerido)",
-                                            "type": "string",
-                                            "example": "1|qWeRtYuIoP1234567890abcdef...",
-                                            "nullable": true
+                                            "example": "Unauthenticated."
                                         }
                                     },
                                     "type": "object"
@@ -82,114 +75,22 @@
                         }
                     },
                     "422": {
-                        "description": "Error de validación o credenciales incorrectas / cuenta desactivada.",
+                        "description": "Contraseña actual incorrecta o nueva contraseña inválida.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "example": "Las credenciales no coinciden con nuestros registros."
+                                            "example": "La contraseña actual es incorrecta."
                                         },
                                         "errors": {
                                             "type": "object",
                                             "example": {
-                                                "email": [
-                                                    "Las credenciales no coinciden con nuestros registros."
+                                                "current_password": [
+                                                    "La contraseña actual es incorrecta."
                                                 ]
                                             }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/logout": {
-            "post": {
-                "tags": [
-                    "Autenticación"
-                ],
-                "summary": "Cerrar sesión (revocar token actual)",
-                "description": "Revoca el token de acceso personal actualmente utilizado por el usuario, finalizando su sesión activa.",
-                "operationId": "logout",
-                "responses": {
-                    "200": {
-                        "description": "Sesión cerrada exitosamente.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Sesión cerrada correctamente."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/me": {
-            "get": {
-                "tags": [
-                    "Autenticación"
-                ],
-                "summary": "Obtener datos del usuario autenticado",
-                "description": "Obtiene los detalles del perfil y rol del usuario correspondiente al token Bearer autenticado.",
-                "operationId": "me",
-                "responses": {
-                    "200": {
-                        "description": "Información del usuario autenticado.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/components/schemas/UserResource"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated."
                                         }
                                     },
                                     "type": "object"
@@ -595,6 +496,188 @@
                     },
                     "401": {
                         "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Iniciar sesión en el sistema",
+                "description": "Autentica a un usuario existente mediante sus credenciales y emite un token Bearer (Sanctum) para consumir los endpoints protegidos.",
+                "operationId": "login",
+                "requestBody": {
+                    "description": "Credenciales del usuario",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Autenticación exitosa (retorna token o indica si se requiere verificación 2FA).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "two_factor_required": {
+                                            "description": "Indica si se requiere completar el segundo factor (código por correo)",
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "description": "Mensaje informativo en caso de requerirse 2FA",
+                                            "type": "string",
+                                            "example": "Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.",
+                                            "nullable": true
+                                        },
+                                        "email": {
+                                            "description": "Correo al que fue enviado el código 2FA",
+                                            "type": "string",
+                                            "example": "admin@pollocharly.com",
+                                            "nullable": true
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        },
+                                        "token": {
+                                            "description": "Token de acceso Bearer (presente cuando 2FA no es requerido)",
+                                            "type": "string",
+                                            "example": "1|qWeRtYuIoP1234567890abcdef...",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación o credenciales incorrectas / cuenta desactivada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Las credenciales no coinciden con nuestros registros."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Las credenciales no coinciden con nuestros registros."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Cerrar sesión (revocar token actual)",
+                "description": "Revoca el token de acceso personal actualmente utilizado por el usuario, finalizando su sesión activa.",
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Sesión cerrada correctamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/me": {
+            "get": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Obtener datos del usuario autenticado",
+                "description": "Obtiene los detalles del perfil y rol del usuario correspondiente al token Bearer autenticado.",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "Información del usuario autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1293,7 +1376,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/DishResource"
+                                        "$ref": "#/components/schemas/PublicDishResource"
                                     }
                                 }
                             }
@@ -2472,6 +2555,221 @@
                     },
                     "403": {
                         "description": "Acceso denegado (requiere rol Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/inventory-movements": {
+            "get": {
+                "tags": [
+                    "Movimientos de Inventario"
+            }
+        },
+        "/api/uploads/dish-image": {
+            "post": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Subir la imagen de un platillo",
+                "description": "Sube la imagen de un platillo al servicio de almacenamiento (Cloudinary) y devuelve su URL pública, que luego se envía en el campo image_url al crear o editar el platillo.",
+                "operationId": "uploadDishImage",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UploadDishImageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Imagen almacenada correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Imagen cargada correctamente."
+                                        },
+                                        "image_url": {
+                                            "type": "string",
+                                            "example": "https://res.cloudinary.com/demo/image/upload/v1/pollo-charly/dishes/abc123.jpg"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Archivo ausente, de un formato no permitido o mayor a 2 MB.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La imagen debe ser un archivo JPG, PNG o WebP."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "El servicio de imágenes rechazó la carga o no respondió.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se pudo guardar la imagen. Intenta de nuevo en unos minutos."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "El servicio de imágenes no está configurado en el servidor.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El servicio de almacenamiento de imágenes no está configurado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Menú"
+                ],
+                "summary": "Descartar una imagen subida y no utilizada",
+                "description": "Elimina del servicio de almacenamiento una imagen que se subió pero no se asoció a ningún platillo (por ejemplo, al cancelar el formulario o reemplazarla antes de guardar). Es idempotente: si la imagen la usa un platillo, no es de este servicio o ya no existe, no se elimina nada y se responde igualmente 204.",
+                "operationId": "discardDishImage",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DiscardDishImageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Solicitud procesada."
+                    },
+                    "422": {
+                        "description": "URL ausente o inválida.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La URL de la imagen es obligatoria."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4053,6 +4351,362 @@
             }
         },
         "/api/reports/dashboard": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Panel de métricas",
+                "description": "Obtiene los indicadores clave (KPIs), ventas por día y platillos más vendidos del periodo, para el panel de métricas del Administrador.",
+                "operationId": "getDashboardMetrics",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial (por defecto, 30 días atrás)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final (por defecto, hoy)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Métricas obtenidas exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/sales": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de ventas",
+                "description": "Genera el reporte de ventas del periodo filtrado, con resumen de totales. Soporta exportación a PDF y Excel mediante el parámetro format.",
+                "operationId": "getSalesReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "cashier_user_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "payment_method",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "json (por defecto), pdf o xlsx",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte de ventas obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/top-dishes": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de platillos más vendidos",
+                "description": "Genera el ranking de platillos más vendidos en el periodo filtrado, a partir de ventas ya cerradas. Soporta exportación a PDF y Excel.",
+                "operationId": "getTopDishesReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/inventory-movements": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de movimientos de inventario",
+                "description": "Genera el reporte de movimientos de inventario del periodo filtrado. Soporta exportación a PDF y Excel.",
+                "operationId": "getInventoryMovementsReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/supply-alerts": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de alertas de reposición",
+                "description": "Genera el reporte de alertas de reposición del periodo filtrado. Soporta exportación a PDF y Excel.",
+                "operationId": "getSupplyAlertsReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "origin",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/ping": {
+            "get": {
+                "tags": [
+                    "General"
+                ],
+                "summary": "Verificar estado de la API",
+                "description": "Endpoint de diagnóstico para comprobar la disponibilidad y conectividad con la API.",
+                "operationId": "ping",
+                "responses": {
+                    "200": {
+                        "description": "La API está en línea y respondiendo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "pong desde Laravel"
+                                        },
+                                        "timestamp": {
+                                            "type": "string",
+                                            "example": "2026-09-20 18:00:00"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reports/dashboard": {
+        "/api/table-statuses": {
             "get": {
                 "tags": [
                     "Reportes"
@@ -7200,7 +7854,7 @@
                     "Gestión de Usuarios"
                 ],
                 "summary": "Registrar un nuevo usuario",
-                "description": "Registra un nuevo usuario con nombre, correo, rol y contraseña inicial. La cuenta se crea activa por defecto.",
+                "description": "Registra un nuevo usuario con nombre, correo y rol. La contraseña no se define: el sistema genera una temporal aleatoria, la envía por correo y exige cambiarla en el primer inicio de sesión. La cuenta se crea activa por defecto.",
                 "operationId": "createUser",
                 "requestBody": {
                     "description": "Datos del nuevo usuario",
@@ -7215,14 +7869,19 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Usuario registrado exitosamente.",
+                        "description": "Usuario registrado. La contraseña temporal se envía por correo; si el envío falla, credentials_sent es false y se puede reintentar con el restablecimiento de contraseña.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "example": "Usuario registrado exitosamente."
+                                            "example": "Usuario registrado exitosamente. Se envió una contraseña temporal a su correo."
+                                        },
+                                        "credentials_sent": {
+                                            "description": "Indica si el correo con la contraseña temporal pudo enviarse",
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "user": {
                                             "$ref": "#/components/schemas/UserResource"
@@ -7234,7 +7893,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error de validación (correo duplicado, contraseña corta, etc.).",
+                        "description": "Error de validación (correo duplicado, rol inválido, etc.).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7728,6 +8387,105 @@
                     }
                 ]
             }
+        },
+        "/api/users/{id}/reset-password": {
+            "post": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Restablecer la contraseña de un usuario con una temporal",
+                "description": "Genera una nueva contraseña temporal aleatoria, la envía al correo del usuario, cierra sus sesiones activas y le exigirá cambiarla al iniciar sesión. También sirve para reenviar las credenciales si el correo original falló. El administrador nunca ve la contraseña.",
+                "operationId": "resetUserPassword",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Identificador del usuario",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contraseña restablecida. credentials_sent indica si el correo pudo enviarse.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Se envió una contraseña temporal al correo del usuario."
+                                        },
+                                        "credentials_sent": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "No se puede restablecer la propia contraseña desde la administración de usuarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Para cambiar tu propia contraseña usa tu perfil."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No query results for model [App\\Models\\User]."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -7755,6 +8513,41 @@
                     }
                 },
                 "type": "object"
+            },
+            "ChangePasswordRequest": {
+                "title": "Change Password Request",
+                "description": "Datos necesarios para que un usuario autenticado cambie su propia contraseña",
+                "required": [
+                    "current_password",
+                    "password",
+                    "password_confirmation"
+                ],
+                "properties": {
+                    "current_password": {
+                        "description": "Contraseña actual del usuario",
+                        "type": "string",
+                        "format": "password",
+                        "example": "passwordActual123"
+                    },
+                    "password": {
+                        "description": "Nueva contraseña (mínimo 8 caracteres y distinta de la actual)",
+                        "type": "string",
+                        "format": "password",
+                        "example": "nuevaPassword123"
+                    },
+                    "password_confirmation": {
+                        "description": "Confirmación de la nueva contraseña",
+                        "type": "string",
+                        "format": "password",
+                        "example": "nuevaPassword123"
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "current_password": "passwordActual123",
+                    "password": "nuevaPassword123",
+                    "password_confirmation": "nuevaPassword123"
+                }
             },
             "ForgotPasswordRequest": {
                 "title": "Forgot Password Request",
@@ -8189,6 +8982,21 @@
                     ]
                 }
             },
+            "DiscardDishImageRequest": {
+                "title": "Discard Dish Image Request",
+                "description": "URL de una imagen subida que no se llegó a asociar a ningún platillo",
+                "required": [
+                    "image_url"
+                ],
+                "properties": {
+                    "image_url": {
+                        "description": "URL devuelta por el endpoint de subida",
+                        "type": "string",
+                        "example": "https://res.cloudinary.com/demo/image/upload/v1/pollo-charly/dishes/abc123.jpg"
+                    }
+                },
+                "type": "object"
+            },
             "ToggleDishStatusRequest": {
                 "title": "Toggle Dish Status Request",
                 "description": "Datos requeridos para activar o desactivar un platillo en el menú",
@@ -8290,6 +9098,21 @@
                         1
                     ]
                 }
+            },
+            "UploadDishImageRequest": {
+                "title": "Upload Dish Image Request",
+                "description": "Imagen del platillo enviada como multipart/form-data",
+                "required": [
+                    "image"
+                ],
+                "properties": {
+                    "image": {
+                        "description": "Archivo de imagen JPG, PNG o WebP de máximo 2 MB",
+                        "type": "string",
+                        "format": "binary"
+                    }
+                },
+                "type": "object"
             },
             "CreateInventoryMovementRequest": {
                 "title": "Create Inventory Movement Request",
@@ -9277,13 +10100,62 @@
                     "is_active": true
                 }
             },
+            "AttendSupplyAlertRequest": {
+                "title": "Attend Supply Alert Request",
+                "description": "Datos opcionales para marcar como atendida una alerta de reposición",
+                "properties": {
+                    "purchase_request_id": {
+                        "description": "ID de la solicitud de compra vinculada (opcional)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Notas u observaciones al atender la alerta",
+                        "type": "string",
+                        "example": "Insumo incluido en solicitud de abastecimiento",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "purchase_request_id": 1,
+                    "notes": "Se generó la solicitud de compra SC-0001 para reposición inmediata."
+                }
+            },
+            "CreateSupplyAlertRequest": {
+                "title": "Create Supply Alert Request",
+                "description": "Datos necesarios para generar manualmente una alerta de reposición de insumo",
+                "required": [
+                    "supply_id"
+                ],
+                "properties": {
+                    "supply_id": {
+                        "description": "ID del producto o insumo del catálogo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "notes": {
+                        "description": "Observación o motivo de la alerta manual",
+                        "type": "string",
+                        "example": "Quedan pocas unidades físicas en bodega",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supply_id": 1,
+                    "notes": "El insumo se está agotando más rápido de lo habitual en turno de cocina."
+                }
+            },
             "CreateUserRequest": {
                 "title": "Create User Request",
-                "description": "Datos necesarios para registrar un nuevo usuario en el sistema",
+                "description": "Datos necesarios para registrar un nuevo usuario. La contraseña no se define aquí: el sistema genera una temporal y la envía por correo.",
                 "required": [
                     "name",
                     "email",
-                    "password",
                     "role_id"
                 ],
                 "properties": {
@@ -9297,12 +10169,6 @@
                         "type": "string",
                         "format": "email",
                         "example": "nuevo.mesero@pollocharly.com"
-                    },
-                    "password": {
-                        "description": "Contraseña inicial de acceso (mínimo 8 caracteres)",
-                        "type": "string",
-                        "format": "password",
-                        "example": "temporal123"
                     },
                     "role_id": {
                         "description": "Identificador del rol a asignar (1: Administrador, 2: Mesero/Cajero, 3: Cocinero)",
@@ -9319,7 +10185,6 @@
                 "example": {
                     "name": "Carlos Mesero",
                     "email": "nuevo.mesero@pollocharly.com",
-                    "password": "temporal123",
                     "role_id": 2,
                     "is_active": true
                 }
@@ -9362,13 +10227,6 @@
                         "format": "email",
                         "example": "carlos.mesero@pollocharly.com"
                     },
-                    "password": {
-                        "description": "Nueva contraseña (opcional, mínimo 8 caracteres)",
-                        "type": "string",
-                        "format": "password",
-                        "example": "nuevaPassword123",
-                        "nullable": true
-                    },
                     "role_id": {
                         "description": "Identificador del rol a asignar",
                         "type": "integer",
@@ -9384,7 +10242,6 @@
                 "example": {
                     "name": "Carlos Alberto Mesero",
                     "email": "carlos.mesero@pollocharly.com",
-                    "password": "nuevaPassword123",
                     "role_id": 2,
                     "is_active": true
                 }
@@ -10281,6 +11138,21 @@
                         "description": "Subtotal del ítem",
                         "type": "number",
                         "example": 700
+            "PublicDishComplementResource": {
+                "title": "Public Dish Complement",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Papas Fritas"
+                    },
+                    "extra_price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 15
                     }
                 },
                 "type": "object"
@@ -10362,6 +11234,46 @@
                         "type": "string",
                         "format": "date-time",
                         "example": "2026-10-07T12:00:00Z"
+            "PublicDishResource": {
+                "title": "Public Dish Resource",
+                "description": "Datos de un platillo aptos para el público (landing page). No incluye receta, insumos ni datos internos.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Pollo Frito Familiar"
+                    },
+                    "category": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DishCategoryResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "8 piezas de pollo frito crujiente",
+                        "nullable": true
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 125
+                    },
+                    "image_url": {
+                        "type": "string",
+                        "example": "https://res.cloudinary.com/demo/image/upload/v1/pollo-charly/dishes/abc123.jpg",
+                        "nullable": true
+                    },
+                    "complements": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicDishComplementResource"
+                        }
                     }
                 },
                 "type": "object"
@@ -10933,6 +11845,11 @@
                         "example": true
                     },
                     "two_factor_enabled": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "must_change_password": {
+                        "description": "Indica si el usuario debe cambiar su contraseña temporal antes de usar el sistema",
                         "type": "boolean",
                         "example": false
                     },

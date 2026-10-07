@@ -22,6 +22,13 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'cloudinary' => [
+        'url' => env('CLOUDINARY_URL'),
+        // Carpeta raíz por entorno: desarrollo y producción comparten la cuenta de Cloudinary y
+        // no deben pisarse las imágenes (la limpieza de huérfanas solo actúa dentro de su carpeta).
+        'folder' => env('CLOUDINARY_FOLDER', 'pollo-charly/'.env('APP_ENV', 'production')),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
