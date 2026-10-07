@@ -15,6 +15,12 @@ class Dish extends Model
 {
     protected $table = 'dishes';
 
+    /** Carpeta del servicio de imágenes donde se guardan las fotos de los platillos de este entorno. */
+    public static function imageFolder(): string
+    {
+        return trim((string) config('services.cloudinary.folder'), '/').'/dishes';
+    }
+
     /**
      * @return array<string, string>
      */

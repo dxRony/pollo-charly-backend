@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\AuthController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ComplementController;
 use App\Http\Controllers\DailyMenuController;
 use App\Http\Controllers\DishController;
+use App\Http\Controllers\DishImageController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\OrderController;
@@ -33,8 +35,9 @@ Route::prefix('2fa')->group(function () {
     Route::post('/resend', [TwoFactorController::class, 'resend']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me/password', ChangePasswordController::class)->middleware('throttle:5,1');
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::prefix('2fa')->group(function () {
@@ -91,7 +94,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
         Route::apiResource('users', UserController::class);
         Route::patch('/users/{user}/status', [UserController::class, 'toggleStatus']);
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
 
+        Route::post('/uploads/dish-image', [DishImageController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('/uploads/dish-image', [DishImageController::class, 'destroy'])->middleware('throttle:60,1');
         Route::post('/dishes', [DishController::class, 'store']);
         Route::put('/dishes/{dish}', [DishController::class, 'update']);
         Route::delete('/dishes/{dish}', [DishController::class, 'destroy']);

@@ -1,5 +1,7 @@
 <?php
 
+use App\Exceptions\ImageStorageNotConfiguredException;
+use App\Exceptions\ImageUploadFailedException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,9 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'password.changed' => \App\Http\Middleware\EnsurePasswordIsChanged::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(fn (ImageStorageNotConfiguredException $e) => response()->json(['message' => $e->getMessage()], 503));
+        $exceptions->render(fn (ImageUploadFailedException $e) => response()->json(['message' => $e->getMessage()], 502));
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

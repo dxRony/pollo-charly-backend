@@ -17,14 +17,12 @@ use OpenApi\Attributes as OA;
     example: [
         'name' => 'Carlos Alberto Mesero',
         'email' => 'carlos.mesero@pollocharly.com',
-        'password' => 'nuevaPassword123',
         'role_id' => 2,
         'is_active' => true,
     ],
     properties: [
         new OA\Property(property: 'name', description: 'Nombre completo del trabajador', type: 'string', example: 'Carlos Alberto Mesero'),
         new OA\Property(property: 'email', description: 'Correo electrónico único corporativo o personal', type: 'string', format: 'email', example: 'carlos.mesero@pollocharly.com'),
-        new OA\Property(property: 'password', description: 'Nueva contraseña (opcional, mínimo 8 caracteres)', type: 'string', format: 'password', nullable: true, example: 'nuevaPassword123'),
         new OA\Property(property: 'role_id', description: 'Identificador del rol a asignar', type: 'integer', example: 2),
         new OA\Property(property: 'is_active', description: 'Estado de la cuenta', type: 'boolean', example: true),
     ]
@@ -52,7 +50,6 @@ class UpdateUserRequest extends FormRequest
                 'max:255',
                 Rule::unique('users', 'email')->ignore($userId),
             ],
-            'password' => ['nullable', 'string', 'min:8'],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'is_active' => ['sometimes', 'boolean'],
         ];
@@ -71,7 +68,6 @@ class UpdateUserRequest extends FormRequest
             'email.email' => 'El formato del correo electrónico no es válido.',
             'email.unique' => 'El correo electrónico ya está registrado por otro usuario.',
             'email.max' => 'El correo electrónico no puede exceder los 255 caracteres.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres si se desea modificar.',
             'role_id.required' => 'El rol asignado es obligatorio.',
             'role_id.integer' => 'El identificador del rol debe ser un número entero.',
             'role_id.exists' => 'El rol seleccionado no es válido.',

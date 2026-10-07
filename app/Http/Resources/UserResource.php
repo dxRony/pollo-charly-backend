@@ -27,6 +27,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'email', type: 'string', format: 'email', example: 'admin@pollocharly.com'),
         new OA\Property(property: 'is_active', type: 'boolean', example: true),
         new OA\Property(property: 'two_factor_enabled', type: 'boolean', example: false),
+        new OA\Property(property: 'must_change_password', description: 'Indica si el usuario debe cambiar su contraseña temporal antes de usar el sistema', type: 'boolean', example: false),
         new OA\Property(property: 'role', ref: '#/components/schemas/UserRole', nullable: true),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time', nullable: true, example: '2026-09-20T12:00:00.000000Z'),
     ]
@@ -46,6 +47,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'is_active' => (bool) $this->is_active,
             'two_factor_enabled' => (bool) $this->two_factor_enabled,
+            'must_change_password' => (bool) $this->must_change_password,
             'role' => $this->role ? [
                 'id' => $this->role->id,
                 'name' => $this->role->name,
