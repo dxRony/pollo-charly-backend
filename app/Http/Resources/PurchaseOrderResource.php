@@ -45,6 +45,8 @@ class PurchaseOrderResource extends JsonResource
             'supplier_id' => $this->supplier_id,
             'supplier_name' => $this->supplier?->company_name,
             'admin_user_id' => $this->admin_user_id,
+            'admin_user_name' => $this->adminUser?->name,
+            'purchase_request_id' => $this->purchase_request_id,
             'purchase_order_status_id' => $this->purchase_order_status_id,
             'status' => $this->status?->name,
             'total' => (float) $this->total,

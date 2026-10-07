@@ -15,6 +15,8 @@ use App\Http\Controllers\DishImageController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RestaurantTableController;
 use App\Http\Controllers\RoleController;
@@ -141,6 +143,20 @@ Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
         Route::post('/inventory-movements/{id}/reject', [InventoryMovementController::class, 'rejectAdjustment']);
 
         Route::post('/supply-alerts/{id}/attend', [SupplyAlertController::class, 'attend']);
+
+        Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
+        Route::get('/purchase-requests/statuses', [PurchaseRequestController::class, 'statuses']);
+        Route::get('/purchase-requests/{id}', [PurchaseRequestController::class, 'show']);
+        Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
+        Route::post('/purchase-requests/{id}/approve', [PurchaseRequestController::class, 'approve']);
+        Route::post('/purchase-requests/{id}/reject', [PurchaseRequestController::class, 'reject']);
+
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);
+        Route::get('/purchase-orders/statuses', [PurchaseOrderController::class, 'statuses']);
+        Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
+        Route::post('/purchase-orders', [PurchaseOrderController::class, 'store']);
+        Route::post('/purchase-orders/{id}/receive', [PurchaseOrderController::class, 'receive']);
+        Route::post('/purchase-orders/{id}/cancel', [PurchaseOrderController::class, 'cancel']);
         Route::post('/restaurant-tables', [RestaurantTableController::class, 'store']);
         Route::put('/restaurant-tables/{id}', [RestaurantTableController::class, 'update']);
         Route::patch('/restaurant-tables/{id}', [RestaurantTableController::class, 'update']);

@@ -15,7 +15,8 @@ class PurchaseOrderStatus extends Model
 
     public const SOLICITADA = 'solicitada';
     public const RECIBIDA_COMPLETA = 'recibida_completa';
-    public const RECIBIDA_INCOMPLETA = 'recibida_incompleta';
+    public const RECIBIDA_CON_INCIDENCIA = 'recibida_con_incidencia';
+    public const RECIBIDA_INCOMPLETA = 'recibida_con_incidencia';
     public const CANCELADA = 'cancelada';
 
     /**
