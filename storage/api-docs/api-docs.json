@@ -1526,6 +1526,342 @@
                 ]
             }
         },
+        "/api/delivery-days": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar días de entrega",
+                "description": "Obtiene el listado de los días de la semana para entregas de proveedores.",
+                "operationId": "listDeliveryDays",
+                "responses": {
+                    "200": {
+                        "description": "Listado de días de entrega obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryDayResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incident-types": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar tipos de incidencias de entrega",
+                "description": "Obtiene los tipos tipificados de anomalías o incidencias en entregas (peso incompleto, producto dañado, retraso, etc.).",
+                "operationId": "listDeliveryIncidentTypes",
+                "responses": {
+                    "200": {
+                        "description": "Listado de tipos de incidencias obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentTypeResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incident-statuses": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar estados de incidencias de entrega",
+                "description": "Obtiene los estados de seguimiento de incidencias (reportada, en corrección, resuelta).",
+                "operationId": "listDeliveryIncidentStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Listado de estados obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentStatusResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incidents": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar incidencias de entrega",
+                "description": "Obtiene el listado general de incidencias de entrega registradas, permitiendo filtrar por proveedor, tipo de incidencia y estado.",
+                "operationId": "listDeliveryIncidents",
+                "parameters": [
+                    {
+                        "name": "supplier_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de proveedor",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "delivery_incident_type_id",
+                        "in": "query",
+                        "description": "Filtrar por tipo de incidencia",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "delivery_incident_status_id",
+                        "in": "query",
+                        "description": "Filtrar por estado de la incidencia",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de incidencias obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Registrar incidencia de entrega",
+                "description": "Registra directamente una nueva incidencia de entrega y actualiza el historial del proveedor.",
+                "operationId": "createDeliveryIncident",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateDeliveryIncidentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Incidencia registrada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Incidencia de entrega registrada exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos inválidos."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incidents/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Consultar detalle de incidencia de entrega",
+                "description": "Consulta los detalles de una incidencia de entrega.",
+                "operationId": "getDeliveryIncident",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la incidencia",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Incidencia obtenida correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Incidencia no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incidents/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Actualizar estado de una incidencia de entrega",
+                "description": "Actualiza el estado de seguimiento de una incidencia (reportada, en corrección o resuelta).",
+                "operationId": "updateDeliveryIncidentStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la incidencia",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDeliveryIncidentStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado de incidencia actualizado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Estado de la incidencia actualizado exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Incidencia no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/dishes": {
             "get": {
                 "tags": [
@@ -3716,6 +4052,329 @@
                 }
             }
         },
+        "/api/reports/dashboard": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Panel de métricas",
+                "description": "Obtiene los indicadores clave (KPIs), ventas por día y platillos más vendidos del periodo, para el panel de métricas del Administrador.",
+                "operationId": "getDashboardMetrics",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial (por defecto, 30 días atrás)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final (por defecto, hoy)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Métricas obtenidas exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/sales": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de ventas",
+                "description": "Genera el reporte de ventas del periodo filtrado, con resumen de totales. Soporta exportación a PDF y Excel mediante el parámetro format.",
+                "operationId": "getSalesReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "cashier_user_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "payment_method",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "json (por defecto), pdf o xlsx",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte de ventas obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/top-dishes": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de platillos más vendidos",
+                "description": "Genera el ranking de platillos más vendidos en el periodo filtrado, a partir de ventas ya cerradas. Soporta exportación a PDF y Excel.",
+                "operationId": "getTopDishesReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/inventory-movements": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de movimientos de inventario",
+                "description": "Genera el reporte de movimientos de inventario del periodo filtrado. Soporta exportación a PDF y Excel.",
+                "operationId": "getInventoryMovementsReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/supply-alerts": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de alertas de reposición",
+                "description": "Genera el reporte de alertas de reposición del periodo filtrado. Soporta exportación a PDF y Excel.",
+                "operationId": "getSupplyAlertsReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "origin",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/table-statuses": {
             "get": {
                 "tags": [
@@ -4810,6 +5469,477 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar y buscar proveedores",
+                "description": "Obtiene el listado de proveedores registrados, permitiendo filtrar por término de búsqueda (empresa, contacto, teléfono, correo), estado activo y día de entrega habitual.",
+                "operationId": "listSuppliers",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por razón social, contacto, teléfono o correo",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Filtrar por estado activo/inactivo",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "delivery_day_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de día de entrega habitual",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de proveedores obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SupplierResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Registrar un nuevo proveedor",
+                "description": "Registra un nuevo proveedor en el sistema con información de contacto, días de entrega asignados y lista de productos/insumos con precios acordados.",
+                "operationId": "createSupplier",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSupplierRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Proveedor registrado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor registrado exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos incorrectos o incompletos."
+                    },
+                    "403": {
+                        "description": "Acceso no autorizado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Consultar información detallada e historial de un proveedor",
+                "description": "Consulta el detalle completo de un proveedor, incluyendo información de contacto, días de entrega, productos con precios pactados, historial de compras e historial de incidencias.",
+                "operationId": "getSupplier",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle e historial del proveedor obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Actualizar información de un proveedor",
+                "description": "Actualiza los datos de contacto, días de entrega y productos/precios pactados con un proveedor.",
+                "operationId": "updateSupplier",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSupplierRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Proveedor actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor actualizado exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos inválidos."
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Dar de baja lógica a un proveedor",
+                "description": "Desactiva lógicamente al proveedor del sistema conservando todo su historial asociado.",
+                "operationId": "deleteSupplier",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Baja lógica realizada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Activar o desactivar proveedor (baja lógica)",
+                "description": "Realiza una baja lógica o reactivación del proveedor, conservando intacto su historial de compras e incidencias.",
+                "operationId": "toggleSupplierStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Estado del proveedor actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}/deliveries": {
+            "post": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Registrar recepción de entrega (con o sin incidencia)",
+                "description": "Registra la recepción de una entrega de proveedor realizada por el personal (mesero/administrador). Si no se detectan problemas, se actualiza el historial como entrega completa. Si se detectan anomalías de peso, calidad o retraso, se registra la incidencia y se actualiza el historial.",
+                "operationId": "recordSupplierDelivery",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordDeliveryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Entrega procesada y registrada en el historial correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "purchase_order": {
+                                            "$ref": "#/components/schemas/PurchaseOrderResource"
+                                        },
+                                        "incident": {
+                                            "oneOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                                }
+                                            ],
+                                            "nullable": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Entrega registrada exitosamente sin incidencias."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos de validación inválidos."
+                    },
+                    "404": {
+                        "description": "Proveedor u orden no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}/history": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Consultar historial de entregas e incidencias de un proveedor",
+                "description": "Obtiene el historial de compras/entregas y de incidencias del proveedor especificado.",
+                "operationId": "getSupplierHistory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Historial obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "purchase_orders": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PurchaseOrderResource"
+                                            }
+                                        },
+                                        "delivery_incidents": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
                     }
                 },
                 "security": [
@@ -7610,6 +8740,363 @@
                 },
                 "type": "object"
             },
+            "CreateDeliveryIncidentRequest": {
+                "title": "Create Delivery Incident Request",
+                "description": "Datos para reportar una incidencia de entrega directamente",
+                "required": [
+                    "supplier_id",
+                    "delivery_incident_type_id",
+                    "description"
+                ],
+                "properties": {
+                    "supplier_id": {
+                        "description": "ID del proveedor al que corresponde la entrega",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra si existe",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de anomalía detectada",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "description": {
+                        "description": "Explicación detallada del problema de peso, calidad o retraso",
+                        "type": "string",
+                        "example": "El proveedor entregó 10 kg en lugar de los 15 kg solicitados.",
+                        "maxLength": 1000,
+                        "minLength": 5
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL del comprobante de incidencia",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true,
+                        "maxLength": 255
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supplier_id": 1,
+                    "purchase_order_id": 2,
+                    "delivery_incident_type_id": 1,
+                    "description": "El proveedor entregó 10 kg en lugar de los 15 kg solicitados.",
+                    "evidence_path": null
+                }
+            },
+            "CreateSupplierRequest": {
+                "title": "Create Supplier Request",
+                "description": "Datos necesarios para registrar un nuevo proveedor en el sistema",
+                "required": [
+                    "company_name"
+                ],
+                "properties": {
+                    "company_name": {
+                        "description": "Razón social o nombre comercial del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola",
+                        "maxLength": 150
+                    },
+                    "contact_name": {
+                        "description": "Nombre de la persona de contacto",
+                        "type": "string",
+                        "example": "Juan Pérez",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "phone": {
+                        "description": "Teléfono de contacto",
+                        "type": "string",
+                        "example": "555-1234",
+                        "nullable": true,
+                        "maxLength": 50
+                    },
+                    "email": {
+                        "description": "Correo electrónico de contacto",
+                        "type": "string",
+                        "format": "email",
+                        "example": "contacto@avicola.com",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "address": {
+                        "description": "Dirección física o fiscal",
+                        "type": "string",
+                        "example": "Av. Industrial 456",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "description": "Estado activo inicial",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "delivery_day_ids": {
+                        "description": "Array de IDs de días de entrega asignados",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            3,
+                            5
+                        ]
+                    },
+                    "supplies": {
+                        "description": "Listado de insumos provistos con precio pactado",
+                        "type": "array",
+                        "items": {
+                            "required": [
+                                "supply_id",
+                                "agreed_price"
+                            ],
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "agreed_price": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "example": 32.5
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "company_name": "Distribuidora Avícola",
+                    "contact_name": "Juan Pérez",
+                    "phone": "555-1234",
+                    "email": "contacto@avicola.com",
+                    "address": "Av. Industrial 456",
+                    "is_active": true,
+                    "delivery_day_ids": [
+                        1,
+                        3,
+                        5
+                    ],
+                    "supplies": [
+                        {
+                            "supply_id": 1,
+                            "agreed_price": 32.5
+                        }
+                    ]
+                }
+            },
+            "RecordDeliveryRequest": {
+                "title": "Record Delivery Request",
+                "description": "Datos para registrar la recepción de una entrega de proveedor, con o sin incidencias",
+                "required": [
+                    "has_incident"
+                ],
+                "properties": {
+                    "has_incident": {
+                        "description": "Indica si se detectó alguna anomalía/incidencia durante la recepción",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra que se recibe (opcional)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de incidencia (obligatorio si has_incident es verdadero)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "description": {
+                        "description": "Descripción detallada de la incidencia (obligatorio si has_incident es verdadero)",
+                        "type": "string",
+                        "example": "El pedido llegó incompleto: faltaron 5 kg.",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL de comprobante/foto de la incidencia",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Notas u observaciones adicionales de la entrega",
+                        "type": "string",
+                        "example": "Entrega recibida en turno matutino.",
+                        "nullable": true,
+                        "maxLength": 500
+                    },
+                    "items": {
+                        "description": "Detalle de insumos recibidos con sus cantidades",
+                        "type": "array",
+                        "items": {
+                            "required": [
+                                "supply_id",
+                                "received_quantity"
+                            ],
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "received_quantity": {
+                                    "type": "number",
+                                    "example": 15
+                                },
+                                "unit_price": {
+                                    "type": "number",
+                                    "example": 32.5,
+                                    "nullable": true
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "has_incident": true,
+                    "purchase_order_id": 1,
+                    "delivery_incident_type_id": 1,
+                    "description": "El pedido llegó incompleto: faltaron 5 kg de pechuga de pollo.",
+                    "evidence_path": null,
+                    "notes": "Conductor de la entrega firmó acta de diferencia."
+                }
+            },
+            "UpdateDeliveryIncidentStatusRequest": {
+                "title": "Update Delivery Incident Status Request",
+                "description": "Datos para cambiar el estado de seguimiento de una incidencia de entrega",
+                "required": [
+                    "delivery_incident_status_id"
+                ],
+                "properties": {
+                    "delivery_incident_status_id": {
+                        "description": "ID del nuevo estado de la incidencia (1=reportada, 2=en_correccion, 3=resuelta)",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "resolution_notes": {
+                        "description": "Notas de resolución o seguimiento",
+                        "type": "string",
+                        "example": "El proveedor repuso los faltantes.",
+                        "nullable": true,
+                        "maxLength": 500
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "delivery_incident_status_id": 3,
+                    "resolution_notes": "El proveedor repuso los 5 kg faltantes en la siguiente entrega."
+                }
+            },
+            "UpdateSupplierRequest": {
+                "title": "Update Supplier Request",
+                "description": "Datos para actualizar la información de un proveedor",
+                "properties": {
+                    "company_name": {
+                        "description": "Razón social o nombre comercial del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola S.A.",
+                        "maxLength": 150
+                    },
+                    "contact_name": {
+                        "description": "Nombre de la persona de contacto",
+                        "type": "string",
+                        "example": "Juan Carlos Pérez",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "phone": {
+                        "description": "Teléfono de contacto",
+                        "type": "string",
+                        "example": "555-9876",
+                        "nullable": true,
+                        "maxLength": 50
+                    },
+                    "email": {
+                        "description": "Correo electrónico de contacto",
+                        "type": "string",
+                        "format": "email",
+                        "example": "ventas@avicola.com",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "address": {
+                        "description": "Dirección física o fiscal",
+                        "type": "string",
+                        "example": "Av. Industrial 456, Bodega 3",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "description": "Estado activo/inactivo",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "delivery_day_ids": {
+                        "description": "Array de IDs de días de entrega asignados",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            2,
+                            4
+                        ]
+                    },
+                    "supplies": {
+                        "description": "Listado actualizado de insumos provistos con precio pactado",
+                        "type": "array",
+                        "items": {
+                            "required": [
+                                "supply_id",
+                                "agreed_price"
+                            ],
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "agreed_price": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "example": 33
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "company_name": "Distribuidora Avícola S.A.",
+                    "contact_name": "Juan Carlos Pérez",
+                    "phone": "555-9876",
+                    "email": "ventas@avicola.com",
+                    "address": "Av. Industrial 456, Bodega 3",
+                    "is_active": true,
+                    "delivery_day_ids": [
+                        1,
+                        2,
+                        4
+                    ],
+                    "supplies": [
+                        {
+                            "supply_id": 1,
+                            "agreed_price": 33
+                        }
+                    ]
+                }
+            },
             "AttendSupplyAlertRequest": {
                 "title": "Attend Supply Alert Request",
                 "description": "Datos opcionales para marcar como atendida una alerta de reposición",
@@ -8017,6 +9504,138 @@
                         "format": "date-time",
                         "example": "2026-09-20T12:00:00.000000Z",
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryDayResource": {
+                "title": "Delivery Day Resource",
+                "description": "Día de entrega de proveedores",
+                "properties": {
+                    "id": {
+                        "description": "ID único del día",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre del día (ej. Lunes)",
+                        "type": "string",
+                        "example": "Lunes"
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryIncidentResource": {
+                "title": "Delivery Incident Resource",
+                "description": "Incidencia registrada en la recepción de entrega de un proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID de la incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra asociada",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    },
+                    "purchase_order_code": {
+                        "description": "Código de la orden de compra",
+                        "type": "string",
+                        "example": "OC-2026-0001",
+                        "nullable": true
+                    },
+                    "supplier_id": {
+                        "description": "ID del proveedor",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supplier_name": {
+                        "description": "Nombre del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola"
+                    },
+                    "receiving_user_id": {
+                        "description": "ID del usuario que recibió la entrega",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "receiving_user_name": {
+                        "description": "Nombre del usuario receptor",
+                        "type": "string",
+                        "example": "Carlos Mesero"
+                    },
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "type": {
+                        "description": "Tipo de incidencia",
+                        "type": "string",
+                        "example": "peso_incompleto"
+                    },
+                    "delivery_incident_status_id": {
+                        "description": "ID del estado de la incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status": {
+                        "description": "Estado actual de la incidencia",
+                        "type": "string",
+                        "example": "reportada"
+                    },
+                    "description": {
+                        "description": "Descripción detallada de la anomalía observada",
+                        "type": "string",
+                        "example": "Faltaron 5 kg de pechuga respecto a lo facturado."
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL de evidencia fotográfica si aplica",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "description": "Fecha de registro",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryIncidentStatusResource": {
+                "title": "Delivery Incident Status Resource",
+                "description": "Estado de una incidencia de entrega",
+                "properties": {
+                    "id": {
+                        "description": "ID único del estado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre del estado (reportada, en_correccion, resuelta)",
+                        "type": "string",
+                        "example": "reportada"
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryIncidentTypeResource": {
+                "title": "Delivery Incident Type Resource",
+                "description": "Tipo de incidencia en recepción de entregas",
+                "properties": {
+                    "id": {
+                        "description": "ID único del tipo de incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre identificador del tipo de incidencia",
+                        "type": "string",
+                        "example": "peso_incompleto"
                     }
                 },
                 "type": "object"
@@ -8618,6 +10237,135 @@
                 },
                 "type": "object"
             },
+            "PurchaseOrderItemResource": {
+                "title": "Purchase Order Item Resource",
+                "description": "Ítem de una orden de compra a proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID del ítem",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "description": "ID del insumo",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supply_name": {
+                        "description": "Nombre del insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo"
+                    },
+                    "measurement_unit": {
+                        "description": "Unidad de medida",
+                        "type": "string",
+                        "example": "Kilogramos"
+                    },
+                    "ordered_quantity": {
+                        "description": "Cantidad pedida",
+                        "type": "number",
+                        "example": 20
+                    },
+                    "received_quantity": {
+                        "description": "Cantidad recibida",
+                        "type": "number",
+                        "example": 20,
+                        "nullable": true
+                    },
+                    "unit_price": {
+                        "description": "Precio unitario pactado",
+                        "type": "number",
+                        "example": 35
+                    },
+                    "subtotal": {
+                        "description": "Subtotal del ítem",
+                        "type": "number",
+                        "example": 700
+                    }
+                },
+                "type": "object"
+            },
+            "PurchaseOrderResource": {
+                "title": "Purchase Order Resource",
+                "description": "Orden de compra o entrega de proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID de la orden",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "code": {
+                        "description": "Código único de orden",
+                        "type": "string",
+                        "example": "OC-2026-0001"
+                    },
+                    "supplier_id": {
+                        "description": "ID del proveedor",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supplier_name": {
+                        "description": "Nombre del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola"
+                    },
+                    "admin_user_id": {
+                        "description": "ID del administrador que generó la orden",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "purchase_order_status_id": {
+                        "description": "ID del estado",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "status": {
+                        "description": "Estado (solicitada, recibida_completa, recibida_con_incidencia, cancelada)",
+                        "type": "string",
+                        "example": "recibida_completa"
+                    },
+                    "total": {
+                        "description": "Total de la orden",
+                        "type": "number",
+                        "example": 1500
+                    },
+                    "expected_date": {
+                        "description": "Fecha prevista de entrega",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-08",
+                        "nullable": true
+                    },
+                    "received_date": {
+                        "description": "Fecha efectiva de recepción",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-08",
+                        "nullable": true
+                    },
+                    "items": {
+                        "description": "Ítems de la orden",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PurchaseOrderItemResource"
+                        }
+                    },
+                    "delivery_incidents": {
+                        "description": "Incidencias asociadas a esta entrega",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                        }
+                    },
+                    "created_at": {
+                        "description": "Fecha de creación",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    }
+                },
+                "type": "object"
+            },
             "ReceiptTypeResource": {
                 "title": "Receipt Type Resource",
                 "description": "Tipo de comprobante emitido por la venta (ticket, factura)",
@@ -8798,6 +10546,170 @@
                         "type": "string",
                         "format": "date-time",
                         "example": "2026-09-21T12:00:00.000000Z"
+                    }
+                },
+                "type": "object"
+            },
+            "SupplierResource": {
+                "title": "Supplier Resource",
+                "description": "Información completa del proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID del proveedor",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "company_name": {
+                        "description": "Nombre de la empresa o razón social",
+                        "type": "string",
+                        "example": "Distribuidora Avícola"
+                    },
+                    "contact_name": {
+                        "description": "Nombre de la persona de contacto",
+                        "type": "string",
+                        "example": "Juan Pérez",
+                        "nullable": true
+                    },
+                    "phone": {
+                        "description": "Teléfono de contacto",
+                        "type": "string",
+                        "example": "555-1234",
+                        "nullable": true
+                    },
+                    "email": {
+                        "description": "Correo electrónico de contacto",
+                        "type": "string",
+                        "example": "contacto@avicola.com",
+                        "nullable": true
+                    },
+                    "address": {
+                        "description": "Dirección física o fiscal",
+                        "type": "string",
+                        "example": "Av. Industrial 456",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "description": "Estado activo/inactivo (baja lógica)",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "delivery_days": {
+                        "description": "Días habituales de entrega",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeliveryDayResource"
+                        }
+                    },
+                    "supplies": {
+                        "description": "Insumos que abastece con precio acordado",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SupplierSupplyResource"
+                        }
+                    },
+                    "purchase_orders_count": {
+                        "description": "Cantidad de compras/entregas registradas",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "delivery_incidents_count": {
+                        "description": "Cantidad de incidencias registradas",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "performance": {
+                        "description": "Métricas de desempeño y cumplimiento del proveedor",
+                        "properties": {
+                            "total_orders": {
+                                "type": "integer",
+                                "example": 12
+                            },
+                            "completed_orders": {
+                                "type": "integer",
+                                "example": 11
+                            },
+                            "incident_orders": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "total_incidents": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "compliance_rate": {
+                                "type": "number",
+                                "example": 91.67
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "purchase_orders": {
+                        "description": "Historial de compras y entregas",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PurchaseOrderResource"
+                        }
+                    },
+                    "delivery_incidents": {
+                        "description": "Historial de incidencias registradas",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                        }
+                    },
+                    "created_at": {
+                        "description": "Fecha de creación",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    },
+                    "updated_at": {
+                        "description": "Fecha de última actualización",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "SupplierSupplyResource": {
+                "title": "Supplier Supply Resource",
+                "description": "Insumo provisto por el proveedor con precio acordado",
+                "properties": {
+                    "id": {
+                        "description": "ID del registro de insumo del proveedor",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "description": "ID del insumo en catálogo",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "name": {
+                        "description": "Nombre del insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo Fresca"
+                    },
+                    "code": {
+                        "description": "Código del insumo",
+                        "type": "string",
+                        "example": "INS-0001"
+                    },
+                    "measurement_unit": {
+                        "description": "Unidad de medida",
+                        "type": "string",
+                        "example": "Kilogramos"
+                    },
+                    "agreed_price": {
+                        "description": "Precio acordado por unidad",
+                        "type": "number",
+                        "example": 34.5
+                    },
+                    "unit_cost": {
+                        "description": "Costo unitario actual en catálogo",
+                        "type": "number",
+                        "example": 35
                     }
                 },
                 "type": "object"
@@ -9069,6 +10981,10 @@
             "description": "Menú del Día"
         },
         {
+            "name": "Gestión de Proveedores",
+            "description": "Gestión de Proveedores"
+        },
+        {
             "name": "Movimientos de Inventario",
             "description": "Movimientos de Inventario"
         },
@@ -9079,6 +10995,10 @@
         {
             "name": "Comandas y Pedidos",
             "description": "Comandas y Pedidos"
+        },
+        {
+            "name": "Reportes",
+            "description": "Reportes"
         },
         {
             "name": "Gestión de Mesas",
