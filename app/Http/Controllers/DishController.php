@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Dishes\DeleteDishImageAction;
 use App\Http\Requests\Dish\CreateDishRequest;
 use App\Http\Requests\Dish\ToggleDishStatusRequest;
 use App\Http\Requests\Dish\UpdateDishRequest;
@@ -275,9 +276,10 @@ class DishController extends Controller
             ),
         ]
     )]
-    public function update(UpdateDishRequest $request, Dish $dish): JsonResponse
+    public function update(UpdateDishRequest $request, Dish $dish, DeleteDishImageAction $deleteDishImage): JsonResponse
     {
         $validated = $request->validated();
+        $previousImageUrl = $dish->image_url;
 
         $dish = DB::transaction(function () use ($dish, $validated) {
             $dish->name = $validated['name'];
@@ -317,6 +319,10 @@ class DishController extends Controller
 
             return $dish;
         });
+
+        if ($previousImageUrl !== null && $previousImageUrl !== $dish->image_url) {
+            $deleteDishImage->handle($previousImageUrl);
+        }
 
         $dish->load(['category', 'recipes.supply.measurementUnit', 'complements']);
 
