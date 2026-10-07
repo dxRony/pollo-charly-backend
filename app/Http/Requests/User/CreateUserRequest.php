@@ -10,19 +10,17 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'CreateUserRequest',
     title: 'Create User Request',
-    description: 'Datos necesarios para registrar un nuevo usuario en el sistema',
-    required: ['name', 'email', 'password', 'role_id'],
+    description: 'Datos necesarios para registrar un nuevo usuario. La contraseña no se define aquí: el sistema genera una temporal y la envía por correo.',
+    required: ['name', 'email', 'role_id'],
     example: [
         'name' => 'Carlos Mesero',
         'email' => 'nuevo.mesero@pollocharly.com',
-        'password' => 'temporal123',
         'role_id' => 2,
         'is_active' => true,
     ],
     properties: [
         new OA\Property(property: 'name', description: 'Nombre completo del trabajador', type: 'string', example: 'Carlos Mesero'),
         new OA\Property(property: 'email', description: 'Correo electrónico único corporativo o personal', type: 'string', format: 'email', example: 'nuevo.mesero@pollocharly.com'),
-        new OA\Property(property: 'password', description: 'Contraseña inicial de acceso (mínimo 8 caracteres)', type: 'string', format: 'password', example: 'temporal123'),
         new OA\Property(property: 'role_id', description: 'Identificador del rol a asignar (1: Administrador, 2: Mesero/Cajero, 3: Cocinero)', type: 'integer', example: 2),
         new OA\Property(property: 'is_active', description: 'Estado inicial de la cuenta (por defecto true)', type: 'boolean', example: true),
     ]
@@ -42,7 +40,6 @@ class CreateUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'is_active' => ['sometimes', 'boolean'],
         ];
@@ -61,8 +58,6 @@ class CreateUserRequest extends FormRequest
             'email.email' => 'El formato del correo electrónico no es válido.',
             'email.unique' => 'El correo electrónico ya está registrado en el sistema.',
             'email.max' => 'El correo electrónico no puede exceder los 255 caracteres.',
-            'password.required' => 'La contraseña inicial es obligatoria.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'role_id.required' => 'El rol asignado es obligatorio.',
             'role_id.integer' => 'El identificador del rol debe ser un número entero.',
             'role_id.exists' => 'El rol seleccionado no es válido.',

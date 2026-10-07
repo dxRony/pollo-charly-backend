@@ -34,7 +34,7 @@ Route::prefix('2fa')->group(function () {
     Route::post('/resend', [TwoFactorController::class, 'resend']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me/password', ChangePasswordController::class)->middleware('throttle:5,1');
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -93,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
         Route::apiResource('users', UserController::class);
         Route::patch('/users/{user}/status', [UserController::class, 'toggleStatus']);
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
 
         Route::post('/dishes', [DishController::class, 'store']);
         Route::put('/dishes/{dish}', [DishController::class, 'update']);

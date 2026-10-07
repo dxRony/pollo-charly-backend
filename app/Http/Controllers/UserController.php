@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Users\CreateUserAction;
+use App\Actions\Users\ResetUserPasswordAction;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\ToggleUserStatusRequest;
 use App\Http\Requests\User\UpdateUserRequest;
@@ -11,7 +13,6 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use OpenApi\Attributes as OA;
 
 class UserController extends Controller
@@ -94,7 +95,7 @@ class UserController extends Controller
     #[OA\Post(
         path: '/api/users',
         operationId: 'createUser',
-        description: 'Registra un nuevo usuario con nombre, correo, rol y contraseña inicial. La cuenta se crea activa por defecto.',
+        description: 'Registra un nuevo usuario con nombre, correo y rol. La contraseña no se define: el sistema genera una temporal aleatoria, la envía por correo y exige cambiarla en el primer inicio de sesión. La cuenta se crea activa por defecto.',
         summary: 'Registrar un nuevo usuario',
         security: [['bearerAuth' => []]],
         tags: ['Gestión de Usuarios'],
@@ -106,17 +107,18 @@ class UserController extends Controller
         responses: [
             new OA\Response(
                 response: 201,
-                description: 'Usuario registrado exitosamente.',
+                description: 'Usuario registrado. La contraseña temporal se envía por correo; si el envío falla, credentials_sent es false y se puede reintentar con el restablecimiento de contraseña.',
                 content: new OA\JsonContent(
                     properties: [
-                        new OA\Property(property: 'message', type: 'string', example: 'Usuario registrado exitosamente.'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Usuario registrado exitosamente. Se envió una contraseña temporal a su correo.'),
+                        new OA\Property(property: 'credentials_sent', description: 'Indica si el correo con la contraseña temporal pudo enviarse', type: 'boolean', example: true),
                         new OA\Property(property: 'user', ref: '#/components/schemas/UserResource'),
                     ]
                 )
             ),
             new OA\Response(
                 response: 422,
-                description: 'Error de validación (correo duplicado, contraseña corta, etc.).',
+                description: 'Error de validación (correo duplicado, rol inválido, etc.).',
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'message', type: 'string', example: 'El correo electrónico ya está registrado en el sistema.'),
@@ -140,21 +142,16 @@ class UserController extends Controller
             ),
         ]
     )]
-    public function store(CreateUserRequest $request): JsonResponse
+    public function store(CreateUserRequest $request, CreateUserAction $createUser): JsonResponse
     {
-        $validated = $request->validated();
-
-        $user = User::query()->create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role_id' => $validated['role_id'],
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
+        $result = $createUser->handle($request->validated());
 
         return response()->json([
-            'message' => 'Usuario registrado exitosamente.',
-            'user' => new UserResource($user->loadMissing('role')),
+            'message' => $result['credentials_sent']
+                ? 'Usuario registrado exitosamente. Se envió una contraseña temporal a su correo.'
+                : 'Usuario registrado, pero no se pudo enviar el correo con la contraseña temporal. Usa "Restablecer contraseña" para reintentar.',
+            'credentials_sent' => $result['credentials_sent'],
+            'user' => new UserResource($result['user']->loadMissing('role')),
         ], 201);
     }
 
@@ -275,10 +272,6 @@ class UserController extends Controller
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->role_id = $validated['role_id'];
-
-        if (! empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
 
         if (array_key_exists('is_active', $validated)) {
             $user->is_active = (bool) $validated['is_active'];
@@ -442,6 +435,71 @@ class UserController extends Controller
 
         return response()->json([
             'message' => $isActive ? 'Usuario activado exitosamente.' : 'Usuario desactivado exitosamente (baja lógica).',
+            'user' => new UserResource($user->loadMissing('role')),
+        ]);
+    }
+
+    #[OA\Post(
+        path: '/api/users/{id}/reset-password',
+        operationId: 'resetUserPassword',
+        description: 'Genera una nueva contraseña temporal aleatoria, la envía al correo del usuario, cierra sus sesiones activas y le exigirá cambiarla al iniciar sesión. También sirve para reenviar las credenciales si el correo original falló. El administrador nunca ve la contraseña.',
+        summary: 'Restablecer la contraseña de un usuario con una temporal',
+        security: [['bearerAuth' => []]],
+        tags: ['Gestión de Usuarios'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', description: 'Identificador del usuario', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Contraseña restablecida. credentials_sent indica si el correo pudo enviarse.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Se envió una contraseña temporal al correo del usuario.'),
+                        new OA\Property(property: 'credentials_sent', type: 'boolean', example: true),
+                        new OA\Property(property: 'user', ref: '#/components/schemas/UserResource'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'No se puede restablecer la propia contraseña desde la administración de usuarios.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Para cambiar tu propia contraseña usa tu perfil.')]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Usuario no encontrado.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'No query results for model [App\\Models\\User].')]
+                )
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'Acceso denegado (solo Administrador).',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'No tienes permisos para acceder a este módulo. Se requiere rol de administradora.')]
+                )
+            ),
+        ]
+    )]
+    public function resetPassword(Request $request, User $user, ResetUserPasswordAction $resetPassword): JsonResponse
+    {
+        if ($request->user()->id === $user->id) {
+            return response()->json([
+                'message' => 'Para cambiar tu propia contraseña usa tu perfil.',
+                'errors' => ['user' => ['Para cambiar tu propia contraseña usa tu perfil.']],
+            ], 422);
+        }
+
+        $credentialsSent = $resetPassword->handle($user);
+
+        return response()->json([
+            'message' => $credentialsSent
+                ? 'Se envió una contraseña temporal al correo del usuario.'
+                : 'Se restableció la contraseña, pero no se pudo enviar el correo. Intenta de nuevo más tarde.',
+            'credentials_sent' => $credentialsSent,
             'user' => new UserResource($user->loadMissing('role')),
         ]);
     }

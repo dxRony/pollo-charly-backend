@@ -6476,7 +6476,7 @@
                     "Gestión de Usuarios"
                 ],
                 "summary": "Registrar un nuevo usuario",
-                "description": "Registra un nuevo usuario con nombre, correo, rol y contraseña inicial. La cuenta se crea activa por defecto.",
+                "description": "Registra un nuevo usuario con nombre, correo y rol. La contraseña no se define: el sistema genera una temporal aleatoria, la envía por correo y exige cambiarla en el primer inicio de sesión. La cuenta se crea activa por defecto.",
                 "operationId": "createUser",
                 "requestBody": {
                     "description": "Datos del nuevo usuario",
@@ -6491,14 +6491,19 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Usuario registrado exitosamente.",
+                        "description": "Usuario registrado. La contraseña temporal se envía por correo; si el envío falla, credentials_sent es false y se puede reintentar con el restablecimiento de contraseña.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "example": "Usuario registrado exitosamente."
+                                            "example": "Usuario registrado exitosamente. Se envió una contraseña temporal a su correo."
+                                        },
+                                        "credentials_sent": {
+                                            "description": "Indica si el correo con la contraseña temporal pudo enviarse",
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "user": {
                                             "$ref": "#/components/schemas/UserResource"
@@ -6510,7 +6515,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error de validación (correo duplicado, contraseña corta, etc.).",
+                        "description": "Error de validación (correo duplicado, rol inválido, etc.).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6974,6 +6979,105 @@
                                         "message": {
                                             "type": "string",
                                             "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado (solo Administrador).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No tienes permisos para acceder a este módulo. Se requiere rol de administradora."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/users/{id}/reset-password": {
+            "post": {
+                "tags": [
+                    "Gestión de Usuarios"
+                ],
+                "summary": "Restablecer la contraseña de un usuario con una temporal",
+                "description": "Genera una nueva contraseña temporal aleatoria, la envía al correo del usuario, cierra sus sesiones activas y le exigirá cambiarla al iniciar sesión. También sirve para reenviar las credenciales si el correo original falló. El administrador nunca ve la contraseña.",
+                "operationId": "resetUserPassword",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Identificador del usuario",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contraseña restablecida. credentials_sent indica si el correo pudo enviarse.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Se envió una contraseña temporal al correo del usuario."
+                                        },
+                                        "credentials_sent": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "No se puede restablecer la propia contraseña desde la administración de usuarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Para cambiar tu propia contraseña usa tu perfil."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No query results for model [App\\Models\\User]."
                                         }
                                     },
                                     "type": "object"
@@ -8233,11 +8337,10 @@
             },
             "CreateUserRequest": {
                 "title": "Create User Request",
-                "description": "Datos necesarios para registrar un nuevo usuario en el sistema",
+                "description": "Datos necesarios para registrar un nuevo usuario. La contraseña no se define aquí: el sistema genera una temporal y la envía por correo.",
                 "required": [
                     "name",
                     "email",
-                    "password",
                     "role_id"
                 ],
                 "properties": {
@@ -8251,12 +8354,6 @@
                         "type": "string",
                         "format": "email",
                         "example": "nuevo.mesero@pollocharly.com"
-                    },
-                    "password": {
-                        "description": "Contraseña inicial de acceso (mínimo 8 caracteres)",
-                        "type": "string",
-                        "format": "password",
-                        "example": "temporal123"
                     },
                     "role_id": {
                         "description": "Identificador del rol a asignar (1: Administrador, 2: Mesero/Cajero, 3: Cocinero)",
@@ -8273,7 +8370,6 @@
                 "example": {
                     "name": "Carlos Mesero",
                     "email": "nuevo.mesero@pollocharly.com",
-                    "password": "temporal123",
                     "role_id": 2,
                     "is_active": true
                 }
@@ -8316,13 +8412,6 @@
                         "format": "email",
                         "example": "carlos.mesero@pollocharly.com"
                     },
-                    "password": {
-                        "description": "Nueva contraseña (opcional, mínimo 8 caracteres)",
-                        "type": "string",
-                        "format": "password",
-                        "example": "nuevaPassword123",
-                        "nullable": true
-                    },
                     "role_id": {
                         "description": "Identificador del rol a asignar",
                         "type": "integer",
@@ -8338,7 +8427,6 @@
                 "example": {
                     "name": "Carlos Alberto Mesero",
                     "email": "carlos.mesero@pollocharly.com",
-                    "password": "nuevaPassword123",
                     "role_id": 2,
                     "is_active": true
                 }
@@ -9462,6 +9550,11 @@
                         "example": true
                     },
                     "two_factor_enabled": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "must_change_password": {
+                        "description": "Indica si el usuario debe cambiar su contraseña temporal antes de usar el sistema",
                         "type": "boolean",
                         "example": false
                     },

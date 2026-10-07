@@ -17,6 +17,7 @@ class ChangePasswordAction
     public function handle(User $user, string $newPassword): void
     {
         $user->password = $newPassword;
+        $user->must_change_password = false;
         $user->save();
 
         $currentToken = $user->currentAccessToken();
