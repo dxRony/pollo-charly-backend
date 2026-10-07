@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\AuthController;
@@ -35,6 +36,7 @@ Route::prefix('2fa')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me/password', ChangePasswordController::class)->middleware('throttle:5,1');
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::prefix('2fa')->group(function () {
