@@ -35,6 +35,10 @@ class ReceivePurchaseOrderRequest extends FormRequest
         return [
             'received_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'resolve_incidents' => ['nullable', 'boolean'],
+            'items' => ['nullable', 'array'],
+            'items.*.supply_id' => ['required_with:items', 'integer', 'exists:supplies,id'],
+            'items.*.received_quantity' => ['required_with:items', 'numeric', 'min:0'],
         ];
     }
 

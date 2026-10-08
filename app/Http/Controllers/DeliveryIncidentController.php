@@ -9,10 +9,14 @@ use App\Http\Requests\Supplier\UpdateDeliveryIncidentStatusRequest;
 use App\Http\Resources\DeliveryIncidentResource;
 use App\Models\DeliveryIncident;
 use App\Models\PurchaseOrder;
+use App\Models\Role;
+use App\Models\User;
+use App\Notifications\DeliveryIncidentNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 class DeliveryIncidentController extends Controller
@@ -125,6 +129,18 @@ class DeliveryIncidentController extends Controller
         });
 
         $incident->load(['supplier', 'receivingUser', 'type', 'status', 'purchaseOrder']);
+
+        try {
+            $adminRole = Role::where('name', 'Administrador')->first();
+            if ($adminRole) {
+                $admins = User::where('role_id', $adminRole->id)->where('is_active', true)->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new DeliveryIncidentNotification($incident));
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo enviar la notificación de incidencia a administradores: '.$e->getMessage());
+        }
 
         return response()->json([
             'data' => new DeliveryIncidentResource($incident),

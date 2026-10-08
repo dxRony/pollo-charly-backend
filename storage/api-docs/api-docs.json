@@ -4613,6 +4613,53 @@
                 ]
             }
         },
+        "/api/purchase-orders/{id}/incident": {
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Reportar incidencia en orden de compra",
+                "description": "Registra una incidencia de entrega no conforme asociada a una orden de compra y notifica a las administradoras.",
+                "operationId": "reportPurchaseOrderIncident",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la orden de compra",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReportOrderIncidentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Incidencia reportada exitosamente."
+                    },
+                    "422": {
+                        "description": "Error de validación."
+                    },
+                    "404": {
+                        "description": "Orden no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/purchase-orders/{id}/cancel": {
             "post": {
                 "tags": [
@@ -9863,6 +9910,40 @@
                 "type": "object",
                 "example": {
                     "reason": "Se verificó suficiente stock disponible en almacén secundario."
+                }
+            },
+            "ReportOrderIncidentRequest": {
+                "title": "Report Order Incident Request",
+                "description": "Datos para reportar una incidencia durante la recepción de una compra a proveedor",
+                "required": [
+                    "delivery_incident_type_id",
+                    "description"
+                ],
+                "properties": {
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de incidencia (peso_incompleto, producto_danado, producto_equivocado, retraso, otro)",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "description": {
+                        "description": "Detalle o descripción de la no conformidad detectada",
+                        "type": "string",
+                        "example": "Diferencia de peso encontrada en balanza.",
+                        "maxLength": 1000
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL opcional de evidencia fotográfica",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true,
+                        "maxLength": 2048
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "delivery_incident_type_id": 1,
+                    "description": "Faltan 5 kg de pechuga de pollo respecto a la cantidad solicitada.",
+                    "evidence_path": null
                 }
             },
             "CreateTableRequest": {
