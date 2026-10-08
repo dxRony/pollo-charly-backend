@@ -11,6 +11,9 @@ use App\Http\Resources\AlertStatusResource;
 use App\Http\Resources\SupplyAlertResource;
 use App\Models\AlertOrigin;
 use App\Models\AlertStatus;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestItem;
+use App\Models\PurchaseRequestStatus;
 use App\Models\Role;
 use App\Models\Supply;
 use App\Models\SupplyAlert;
@@ -72,6 +75,8 @@ class SupplyAlertController extends Controller
             'origin',
             'status',
             'user.role',
+            'inventoryMovement.movementType',
+            'inventoryMovement.adjustmentStatus',
         ]);
 
         // Filtro rápido por alertas pendientes
@@ -265,6 +270,8 @@ class SupplyAlertController extends Controller
             'origin',
             'status',
             'user.role',
+            'inventoryMovement.movementType',
+            'inventoryMovement.adjustmentStatus',
         ])->find($id);
 
         if (! $alert) {
@@ -357,23 +364,23 @@ class SupplyAlertController extends Controller
 
             if ($request->filled('purchase_request_id')) {
                 $alert->purchase_request_id = (int) $request->input('purchase_request_id');
-            } else {
-                $pendingPrStatus = \App\Models\PurchaseRequestStatus::query()->firstOrCreate(
-                    ['name' => \App\Models\PurchaseRequestStatus::PENDIENTE],
-                    ['name' => \App\Models\PurchaseRequestStatus::PENDIENTE]
+            } elseif (! $alert->inventory_movement_id) {
+                $pendingPrStatus = PurchaseRequestStatus::query()->firstOrCreate(
+                    ['name' => PurchaseRequestStatus::PENDIENTE],
+                    ['name' => PurchaseRequestStatus::PENDIENTE]
                 );
 
                 $minStock = (float) ($alert->supply?->minimum_stock ?? 10.0);
                 $currStock = (float) ($alert->supply?->current_stock ?? 0.0);
                 $suggestedQty = max(1.0, round(($minStock * 2) - $currStock, 2));
 
-                $purchaseRequest = \App\Models\PurchaseRequest::query()->create([
+                $purchaseRequest = PurchaseRequest::query()->create([
                     'requester_user_id' => $request->user()?->id ?? $alert->user_id,
                     'purchase_request_status_id' => $pendingPrStatus->id,
-                    'reason' => 'Solicitud generada a partir de la alerta de reposición #' . $alert->id . ' para el insumo ' . ($alert->supply?->name ?? 'N/A'),
+                    'reason' => 'Solicitud generada a partir de la alerta de reposición #'.$alert->id.' para el insumo '.($alert->supply?->name ?? 'N/A'),
                 ]);
 
-                \App\Models\PurchaseRequestItem::query()->create([
+                PurchaseRequestItem::query()->create([
                     'purchase_request_id' => $purchaseRequest->id,
                     'supply_id' => $alert->supply_id,
                     'suggested_quantity' => $suggestedQty,
@@ -385,7 +392,7 @@ class SupplyAlertController extends Controller
 
             if ($request->filled('notes')) {
                 $notes = trim((string) $request->input('notes'));
-                $alert->notes = ($alert->notes ? $alert->notes . ' | Atención: ' : 'Atención: ') . $notes;
+                $alert->notes = ($alert->notes ? $alert->notes.' | Atención: ' : 'Atención: ').$notes;
             }
 
             $alert->save();
