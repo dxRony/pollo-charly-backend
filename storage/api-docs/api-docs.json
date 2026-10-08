@@ -5407,6 +5407,74 @@
                 ]
             }
         },
+        "/api/reports/inventory-waste": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de mermas y pérdidas de inventario",
+                "description": "Genera el reporte de mermas y pérdidas de inventario del periodo filtrado, calculando costos monetarios por insumo y métricas consolidadas. Soporta exportación a PDF y Excel.",
+                "operationId": "getInventoryWasteReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "json (por defecto), pdf o xlsx",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte de mermas obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/table-statuses": {
             "get": {
                 "tags": [

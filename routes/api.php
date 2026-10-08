@@ -173,5 +173,6 @@ Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
         Route::get('/reports/top-dishes', [ReportController::class, 'topDishes']);
         Route::get('/reports/inventory-movements', [ReportController::class, 'inventoryMovements']);
         Route::get('/reports/supply-alerts', [ReportController::class, 'supplyAlerts']);
+        Route::get('/reports/inventory-waste', [ReportController::class, 'inventoryWaste']);
     });
 });

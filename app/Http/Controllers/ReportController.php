@@ -6,18 +6,19 @@ namespace App\Http\Controllers;
 
 use App\Actions\Reports\BuildDashboardMetricsAction;
 use App\Actions\Reports\BuildInventoryMovementsReportAction;
+use App\Actions\Reports\BuildInventoryWasteReportAction;
 use App\Actions\Reports\BuildSalesReportAction;
 use App\Actions\Reports\BuildSupplyAlertsReportAction;
 use App\Actions\Reports\BuildTopDishesReportAction;
 use App\Exports\GenericTableExport;
 use App\Models\AlertOrigin;
 use App\Models\AlertStatus;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Facades\Excel;
 use OpenApi\Attributes as OA;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\Response;
 
 class ReportController extends Controller
@@ -228,6 +229,59 @@ class ReportController extends Controller
         return $this->export($format, 'Alertas de Reposición', $this->describeFilters($report['filters']), $columns, $exportRows, null, 'reporte-alertas-reposicion');
     }
 
+    #[OA\Get(
+        path: '/api/reports/inventory-waste',
+        operationId: 'getInventoryWasteReport',
+        description: 'Genera el reporte de mermas y pérdidas de inventario del periodo filtrado, calculando costos monetarios por insumo y métricas consolidadas. Soporta exportación a PDF y Excel.',
+        summary: 'Reporte de mermas y pérdidas de inventario',
+        security: [['bearerAuth' => []]],
+        tags: ['Reportes'],
+        parameters: [
+            new OA\Parameter(name: 'date_from', in: 'query', required: false, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', required: false, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'supply_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'user_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'format', in: 'query', description: 'json (por defecto), pdf o xlsx', required: false, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Reporte de mermas obtenido exitosamente.'),
+            new OA\Response(response: 403, description: 'No autorizado. Se requiere rol de Administrador.'),
+        ]
+    )]
+    public function inventoryWaste(Request $request, BuildInventoryWasteReportAction $action): JsonResponse|Response
+    {
+        $report = $action->handle($request->only(['date_from', 'date_to', 'supply_id', 'user_id']));
+
+        $format = (string) $request->query('format', 'json');
+
+        if ($format === 'json') {
+            return response()->json($report);
+        }
+
+        $columns = ['Fecha', 'Insumo', 'Tipo de pérdida', 'Cantidad', 'Unidad', 'Costo unitario', 'Costo total', 'Responsable', 'Motivo'];
+
+        $exportRows = $report['rows']->map(fn (array $row) => [
+            $row['date'],
+            $row['supply_name'],
+            $row['type'],
+            $row['quantity'],
+            $row['unit'],
+            $this->money((float) $row['unit_cost']),
+            $this->money((float) $row['total_cost']),
+            $row['user_name'],
+            $row['reason'] ?? '—',
+        ]);
+
+        $summary = [
+            'Costo total de pérdida' => $this->money((float) $report['summary']['total_loss_cost']),
+            'Cantidad total mermada' => (string) $report['summary']['total_quantity'],
+            'N° de registros' => (string) $report['summary']['records_count'],
+            'Insumo con mayor pérdida' => (string) ($report['summary']['top_wasted_supply'] ?? '—'),
+        ];
+
+        return $this->export($format, 'Reporte de Mermas y Pérdidas de Inventario', $this->describeFilters($report['filters']), $columns, $exportRows, $summary, 'reporte-mermas-perdidas');
+    }
+
     /**
      * @param  array<int, string>  $columns
      * @param  Collection<int, array<int, mixed>>  $rows
@@ -264,14 +318,14 @@ class ReportController extends Controller
         $parts = [];
 
         if (! empty($filters['date_from']) || ! empty($filters['date_to'])) {
-            $parts[] = 'Del ' . ($filters['date_from'] ?? '—') . ' al ' . ($filters['date_to'] ?? 'hoy');
+            $parts[] = 'Del '.($filters['date_from'] ?? '—').' al '.($filters['date_to'] ?? 'hoy');
         }
 
         foreach ($filters as $key => $value) {
             if (in_array($key, ['date_from', 'date_to'], true) || empty($value)) {
                 continue;
             }
-            $parts[] = ucfirst(str_replace('_', ' ', $key)) . ': ' . $value;
+            $parts[] = ucfirst(str_replace('_', ' ', $key)).': '.$value;
         }
 
         return count($parts) > 0 ? implode(' · ', $parts) : 'Sin filtros aplicados';
@@ -279,7 +333,7 @@ class ReportController extends Controller
 
     private function money(float $amount): string
     {
-        return 'Q' . number_format($amount, 2);
+        return 'Q'.number_format($amount, 2);
     }
 
     private function labelPaymentMethod(?string $name): string
