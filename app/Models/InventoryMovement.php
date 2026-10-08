@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'supply_id',
@@ -100,5 +101,13 @@ class InventoryMovement extends Model
     public function approverUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approver_user_id');
+    }
+
+    /**
+     * @return HasOne<SupplyAlert, $this>
+     */
+    public function supplyAlert(): HasOne
+    {
+        return $this->hasOne(SupplyAlert::class);
     }
 }

@@ -13,6 +13,7 @@ use App\Models\AlertOrigin;
 use App\Models\AlertStatus;
 use App\Models\InventoryMovement;
 use App\Models\InventoryMovementType;
+use App\Models\Role;
 use App\Models\Supply;
 use App\Models\SupplyAlert;
 use App\Models\User;
@@ -67,6 +68,9 @@ class InventoryMovementController extends Controller
     )]
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $isAdmin = $user && $user->role && $user->role->name === Role::ADMINISTRADOR;
+
         $query = InventoryMovement::query()
             ->with([
                 'supply.measurementUnit',
@@ -75,6 +79,11 @@ class InventoryMovementController extends Controller
                 'adjustmentStatus',
                 'approverUser',
             ]);
+
+        // Los usuarios no administradores (meseros, cocineros, etc.) solo pueden consultar sus propios movimientos
+        if (! $isAdmin && $user) {
+            $query->where('user_id', $user->id);
+        }
 
         // Filtro por insumo
         if ($request->filled('supply_id')) {
@@ -335,6 +344,30 @@ class InventoryMovementController extends Controller
                         'approver_user_id' => null,
                     ]);
 
+                    // Generar alerta para la administradora
+                    $manualOrigin = AlertOrigin::query()->firstOrCreate(
+                        ['name' => AlertOrigin::MANUAL],
+                        ['name' => AlertOrigin::MANUAL]
+                    );
+
+                    $pendingAlertStatus = AlertStatus::query()->firstOrCreate(
+                        ['name' => AlertStatus::PENDING],
+                        ['name' => AlertStatus::PENDING]
+                    );
+
+                    $alert = SupplyAlert::query()->create([
+                        'supply_id' => $supply->id,
+                        'alert_origin_id' => $manualOrigin->id,
+                        'alert_status_id' => $pendingAlertStatus->id,
+                        'user_id' => $user->id,
+                        'inventory_movement_id' => $movement->id,
+                        'notes' => $reason ?: 'Ajuste manual de inventario solicitado.',
+                    ]);
+
+                    DB::afterCommit(function () use ($alert) {
+                        SupplyAlertController::notifyAdministrators($alert);
+                    });
+
                     $message = 'Solicitud de ajuste de inventario registrada exitosamente y enviada a revisión.';
                     break;
 
@@ -395,8 +428,11 @@ class InventoryMovementController extends Controller
             ),
         ]
     )]
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $isAdmin = $user && $user->role && $user->role->name === Role::ADMINISTRADOR;
+
         $movement = InventoryMovement::query()
             ->with([
                 'supply.measurementUnit',
@@ -411,6 +447,12 @@ class InventoryMovementController extends Controller
             return response()->json([
                 'message' => 'Movimiento de inventario no encontrado.',
             ], 404);
+        }
+
+        if (! $isAdmin && $user && $movement->user_id !== $user->id) {
+            return response()->json([
+                'message' => 'No tienes permisos para consultar este movimiento de inventario.',
+            ], 403);
         }
 
         return response()->json([
@@ -515,13 +557,18 @@ class InventoryMovementController extends Controller
 
             if ($request->filled('reason')) {
                 $additionalNotes = trim((string) $request->input('reason'));
-                $movement->reason = ($movement->reason ? $movement->reason . ' | Aprobación: ' : 'Aprobación: ') . $additionalNotes;
+                $movement->reason = ($movement->reason ? $movement->reason.' | Aprobación: ' : 'Aprobación: ').$additionalNotes;
             }
 
             $movement->save();
 
-            // Evaluación de alerta automática si la nueva existencia queda bajo el mínimo
-            $this->checkAndCreateLowStockAlert($supply, $user);
+            // Marcar alerta vinculada como atendida si existe
+            $attendedStatus = AlertStatus::query()->where('name', AlertStatus::ATTENDED)->first();
+            if ($attendedStatus) {
+                SupplyAlert::query()
+                    ->where('inventory_movement_id', $movement->id)
+                    ->update(['alert_status_id' => $attendedStatus->id]);
+            }
 
             $movement->load([
                 'supply.measurementUnit',
@@ -627,10 +674,18 @@ class InventoryMovementController extends Controller
 
             if ($request->filled('reason')) {
                 $rejectionReason = trim((string) $request->input('reason'));
-                $movement->reason = ($movement->reason ? $movement->reason . ' | Motivo de rechazo: ' : 'Rechazado: ') . $rejectionReason;
+                $movement->reason = ($movement->reason ? $movement->reason.' | Motivo de rechazo: ' : 'Rechazado: ').$rejectionReason;
             }
 
             $movement->save();
+
+            // Marcar alerta vinculada como atendida si existe
+            $attendedStatus = AlertStatus::query()->where('name', AlertStatus::ATTENDED)->first();
+            if ($attendedStatus) {
+                SupplyAlert::query()
+                    ->where('inventory_movement_id', $movement->id)
+                    ->update(['alert_status_id' => $attendedStatus->id]);
+            }
 
             $movement->load([
                 'supply.measurementUnit',
@@ -710,7 +765,7 @@ class InventoryMovementController extends Controller
                     'alert_origin_id' => $automaticOrigin->id,
                     'alert_status_id' => $pendingStatus->id,
                     'user_id' => $user->id,
-                    'notes' => 'Alerta automática generada al quedar la existencia por debajo del mínimo de referencia (' . $supply->minimum_stock . '). Existencia actual: ' . $supply->current_stock,
+                    'notes' => 'Alerta automática generada al quedar la existencia por debajo del mínimo de referencia ('.$supply->minimum_stock.'). Existencia actual: '.$supply->current_stock,
                 ]);
 
                 // Notificar por correo a las administradoras del sistema

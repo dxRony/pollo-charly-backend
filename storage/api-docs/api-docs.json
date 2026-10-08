@@ -12439,6 +12439,19 @@
                         "type": "integer",
                         "nullable": true
                     },
+                    "inventory_movement_id": {
+                        "description": "ID del movimiento de ajuste vinculado (si aplica)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "inventory_movement": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/InventoryMovementResource"
+                            }
+                        ],
+                        "nullable": true
+                    },
                     "notes": {
                         "description": "Observaciones o motivo de la alerta",
                         "type": "string",
