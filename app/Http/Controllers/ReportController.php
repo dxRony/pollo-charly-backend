@@ -8,6 +8,7 @@ use App\Actions\Reports\BuildDashboardMetricsAction;
 use App\Actions\Reports\BuildInventoryMovementsReportAction;
 use App\Actions\Reports\BuildInventoryWasteReportAction;
 use App\Actions\Reports\BuildSalesReportAction;
+use App\Actions\Reports\BuildSupplierPurchasesReportAction;
 use App\Actions\Reports\BuildSupplyAlertsReportAction;
 use App\Actions\Reports\BuildTopDishesReportAction;
 use App\Exports\GenericTableExport;
@@ -280,6 +281,60 @@ class ReportController extends Controller
         ];
 
         return $this->export($format, 'Reporte de Mermas y Pérdidas de Inventario', $this->describeFilters($report['filters']), $columns, $exportRows, $summary, 'reporte-mermas-perdidas');
+    }
+
+    #[OA\Get(
+        path: '/api/reports/supplier-purchases',
+        operationId: 'getSupplierPurchasesReport',
+        description: 'Genera el reporte de compras y rendimiento de proveedores del periodo filtrado, calculando volumen de compra, cumplimiento de entregas y puntualidad. Soporta exportación a PDF y Excel.',
+        summary: 'Reporte de compras y rendimiento de proveedores',
+        security: [['bearerAuth' => []]],
+        tags: ['Reportes'],
+        parameters: [
+            new OA\Parameter(name: 'date_from', in: 'query', required: false, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', required: false, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'supplier_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'status', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'format', in: 'query', description: 'json (por defecto), pdf o xlsx', required: false, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Reporte de compras y proveedores obtenido exitosamente.'),
+            new OA\Response(response: 403, description: 'No autorizado. Se requiere rol de Administrador.'),
+        ]
+    )]
+    public function supplierPurchases(Request $request, BuildSupplierPurchasesReportAction $action): JsonResponse|Response
+    {
+        $report = $action->handle($request->only(['date_from', 'date_to', 'supplier_id', 'status']));
+
+        $format = (string) $request->query('format', 'json');
+
+        if ($format === 'json') {
+            return response()->json($report);
+        }
+
+        $columns = ['N° Orden', 'Fecha', 'Proveedor', 'Estado', 'F. Esperada', 'F. Entrega', 'Puntualidad', 'Ítems', 'Total', 'Incidencias'];
+
+        $exportRows = $report['rows']->map(fn (array $row) => [
+            $row['code'],
+            $row['date'],
+            $row['supplier_name'],
+            $row['status_label'],
+            $row['expected_date'],
+            $row['received_date'],
+            $row['punctuality'],
+            $row['items_count'],
+            $this->money((float) $row['total']),
+            $row['incidents_summary'],
+        ]);
+
+        $summary = [
+            'Total comprado' => $this->money((float) $report['summary']['total_purchases_amount']),
+            'N° de órdenes' => (string) $report['summary']['orders_count'],
+            'Órdenes conformes' => (string) $report['summary']['completed_orders_count'],
+            'Cumplimiento' => $report['summary']['fulfillment_rate'].'%',
+        ];
+
+        return $this->export($format, 'Reporte de Compras y Proveedores', $this->describeFilters($report['filters']), $columns, $exportRows, $summary, 'reporte-compras-proveedores');
     }
 
     /**

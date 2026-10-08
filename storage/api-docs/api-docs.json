@@ -5475,6 +5475,74 @@
                 ]
             }
         },
+        "/api/reports/supplier-purchases": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de compras y rendimiento de proveedores",
+                "description": "Genera el reporte de compras y rendimiento de proveedores del periodo filtrado, calculando volumen de compra, cumplimiento de entregas y puntualidad. Soporta exportación a PDF y Excel.",
+                "operationId": "getSupplierPurchasesReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "supplier_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "json (por defecto), pdf o xlsx",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte de compras y proveedores obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/table-statuses": {
             "get": {
                 "tags": [
