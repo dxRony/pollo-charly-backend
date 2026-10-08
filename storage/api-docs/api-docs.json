@@ -203,6 +203,86 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Actualizar perfil del usuario autenticado",
+                "description": "Actualiza los datos personales (nombre y correo electrónico) del usuario autenticado.",
+                "operationId": "updateProfile",
+                "requestBody": {
+                    "description": "Datos actualizados del perfil",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateProfileRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Perfil actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Perfil actualizado exitosamente."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (campos requeridos, formato inválido o correo duplicado).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El correo electrónico ya está registrado por otro usuario."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/me/password": {
@@ -8952,6 +9032,32 @@
                     "email": "admin@pollocharly.com",
                     "password": "nuevaPassword123",
                     "password_confirmation": "nuevaPassword123"
+                }
+            },
+            "UpdateProfileRequest": {
+                "title": "Update Profile Request",
+                "description": "Datos permitidos para modificar el perfil del usuario autenticado",
+                "required": [
+                    "name",
+                    "email"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre completo del usuario",
+                        "type": "string",
+                        "example": "Carlos Alberto Mesero"
+                    },
+                    "email": {
+                        "description": "Correo electrónico del usuario",
+                        "type": "string",
+                        "format": "email",
+                        "example": "carlos.mesero@pollocharly.com"
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Carlos Alberto Mesero",
+                    "email": "carlos.mesero@pollocharly.com"
                 }
             },
             "VerifyTwoFactorRequest": {
