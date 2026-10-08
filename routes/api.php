@@ -42,6 +42,7 @@ Route::prefix('2fa')->group(function () {
 
 Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::match(['put', 'patch'], '/me', [AuthController::class, 'updateProfile']);
     Route::put('/me/password', ChangePasswordController::class)->middleware('throttle:5,1');
     Route::post('/logout', [AuthController::class, 'logout']);
 

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Auth\LoginAction;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -187,5 +188,62 @@ class AuthController extends Controller
     public function me(Request $request): UserResource
     {
         return new UserResource($request->user()->loadMissing('role'));
+    }
+
+    #[OA\Put(
+        path: '/api/me',
+        operationId: 'updateProfile',
+        description: 'Actualiza los datos personales (nombre y correo electrónico) del usuario autenticado.',
+        summary: 'Actualizar perfil del usuario autenticado',
+        security: [['bearerAuth' => []]],
+        tags: ['Autenticación'],
+        requestBody: new OA\RequestBody(
+            description: 'Datos actualizados del perfil',
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/UpdateProfileRequest')
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Perfil actualizado exitosamente.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Perfil actualizado exitosamente.'),
+                        new OA\Property(property: 'data', ref: '#/components/schemas/UserResource'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Error de validación (campos requeridos, formato inválido o correo duplicado).',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'El correo electrónico ya está registrado por otro usuario.'),
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'No autenticado.',
+                content: new OA\JsonContent(
+                    properties: [new OA\Property(property: 'message', type: 'string', example: 'Unauthenticated.')]
+                )
+            ),
+        ]
+    )]
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $validated = $request->validated();
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->save();
+
+        return response()->json([
+            'message' => 'Perfil actualizado exitosamente.',
+            'data' => new UserResource($user->loadMissing('role')),
+        ]);
     }
 }
