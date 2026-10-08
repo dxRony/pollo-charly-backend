@@ -6,7 +6,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Purchase\CreatePurchaseOrderRequest;
 use App\Http\Requests\Purchase\ReceivePurchaseOrderRequest;
+use App\Http\Requests\Purchase\ReportOrderIncidentRequest;
+use App\Http\Resources\DeliveryIncidentResource;
 use App\Http\Resources\PurchaseOrderResource;
+use App\Models\DeliveryIncident;
+use App\Models\DeliveryIncidentStatus;
 use App\Models\InventoryMovement;
 use App\Models\InventoryMovementType;
 use App\Models\PurchaseOrder;
@@ -14,8 +18,11 @@ use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseOrderStatus;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestStatus;
+use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\Supply;
+use App\Models\User;
+use App\Notifications\DeliveryIncidentNotification;
 use App\Notifications\PurchaseOrderNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -283,11 +290,11 @@ class PurchaseOrderController extends Controller
                 Notification::route('mail', $supplier->email)->notify(new PurchaseOrderNotification($purchaseOrder));
             }
         } catch (\Throwable $e) {
-            Log::warning('No se pudo enviar notificación de orden de compra al proveedor: ' . $e->getMessage());
+            Log::warning('No se pudo enviar notificación de orden de compra al proveedor: '.$e->getMessage());
         }
 
         return response()->json([
-            'message' => 'Compra registrada exitosamente con código ' . $purchaseOrder->code . '.',
+            'message' => 'Compra registrada exitosamente con código '.$purchaseOrder->code.'.',
             'purchase_order' => new PurchaseOrderResource($purchaseOrder),
         ], 201);
     }
@@ -325,9 +332,14 @@ class PurchaseOrderController extends Controller
             ], 404);
         }
 
-        if ($order->status?->name !== PurchaseOrderStatus::SOLICITADA) {
+        $allowedStatuses = [
+            PurchaseOrderStatus::SOLICITADA,
+            PurchaseOrderStatus::RECIBIDA_CON_INCIDENCIA,
+        ];
+
+        if (! in_array($order->status?->name, $allowedStatuses, true)) {
             return response()->json([
-                'message' => 'Solo se pueden recibir órdenes en estado solicitada. El estado actual es: ' . ($order->status?->name ?? 'desconocido'),
+                'message' => 'Solo se pueden recibir órdenes en estado solicitada o con incidencia en corrección. El estado actual es: '.($order->status?->name ?? 'desconocido'),
             ], 422);
         }
 
@@ -347,8 +359,12 @@ class PurchaseOrderController extends Controller
             $order->purchase_order_status_id = $recibidaStatus->id;
             $order->save();
 
+            $itemsMap = collect($validated['items'] ?? [])->keyBy('supply_id');
+
             foreach ($order->items as $item) {
-                $qty = (float) $item->ordered_quantity;
+                $override = $itemsMap->get($item->supply_id);
+                $qty = $override ? (float) $override['received_quantity'] : (float) $item->ordered_quantity;
+
                 $item->received_quantity = $qty;
                 $item->save();
 
@@ -374,6 +390,17 @@ class PurchaseOrderController extends Controller
                 ]);
             }
 
+            // Si la orden tenía incidencias abiertas, resolverlas (Scenario 3: Proveedor corrige o repone productos)
+            $resolvedStatus = DeliveryIncidentStatus::query()->firstOrCreate(
+                ['name' => 'resuelta'],
+                ['name' => 'resuelta']
+            );
+
+            DeliveryIncident::query()
+                ->where('purchase_order_id', $order->id)
+                ->where('delivery_incident_status_id', '!=', $resolvedStatus->id)
+                ->update(['delivery_incident_status_id' => $resolvedStatus->id]);
+
             return $order;
         });
 
@@ -390,6 +417,90 @@ class PurchaseOrderController extends Controller
             'message' => 'Recepción de compra confirmada exitosamente. Se actualizaron las existencias y el historial de movimientos de inventario.',
             'purchase_order' => new PurchaseOrderResource($result),
         ]);
+    }
+
+    #[OA\Post(
+        path: '/api/purchase-orders/{id}/incident',
+        operationId: 'reportPurchaseOrderIncident',
+        description: 'Registra una incidencia de entrega no conforme asociada a una orden de compra y notifica a las administradoras.',
+        summary: 'Reportar incidencia en orden de compra',
+        security: [['bearerAuth' => []]],
+        tags: ['Compras y Abastecimiento'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', description: 'ID de la orden de compra', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/ReportOrderIncidentRequest')
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Incidencia reportada exitosamente.'),
+            new OA\Response(response: 422, description: 'Error de validación.'),
+            new OA\Response(response: 404, description: 'Orden no encontrada.'),
+        ]
+    )]
+    public function reportIncident(ReportOrderIncidentRequest $request, int $id): JsonResponse
+    {
+        $validated = $request->validated();
+        $user = $request->user();
+
+        $order = PurchaseOrder::query()->with(['supplier', 'status'])->find($id);
+
+        if (! $order) {
+            return response()->json([
+                'message' => 'Orden de compra no encontrada.',
+            ], 404);
+        }
+
+        $result = DB::transaction(function () use ($order, $validated, $user) {
+            $incidentStatusReportada = DeliveryIncidentStatus::query()->firstOrCreate(
+                ['name' => 'reportada'],
+                ['name' => 'reportada']
+            );
+
+            $orderStatusIncident = PurchaseOrderStatus::query()->firstOrCreate(
+                ['name' => PurchaseOrderStatus::RECIBIDA_CON_INCIDENCIA],
+                ['name' => PurchaseOrderStatus::RECIBIDA_CON_INCIDENCIA]
+            );
+
+            $incident = DeliveryIncident::create([
+                'purchase_order_id' => $order->id,
+                'supplier_id' => $order->supplier_id,
+                'receiving_user_id' => $user->id,
+                'delivery_incident_type_id' => $validated['delivery_incident_type_id'],
+                'delivery_incident_status_id' => $incidentStatusReportada->id,
+                'description' => $validated['description'],
+                'evidence_path' => $validated['evidence_path'] ?? null,
+            ]);
+
+            $order->purchase_order_status_id = $orderStatusIncident->id;
+            $order->received_date = now()->toDateString();
+            $order->save();
+
+            return $incident;
+        });
+
+        $result->load(['supplier', 'receivingUser', 'type', 'status', 'purchaseOrder']);
+        $order->load(['supplier', 'adminUser', 'status', 'items.supply.measurementUnit', 'deliveryIncidents']);
+
+        // Notificar por correo a las administradoras activas (Scenario 2)
+        try {
+            $adminRole = Role::where('name', 'Administrador')->first();
+            if ($adminRole) {
+                $admins = User::where('role_id', $adminRole->id)->where('is_active', true)->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new DeliveryIncidentNotification($result));
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo enviar notificación de incidencia a las administradoras: '.$e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'Incidencia de entrega registrada exitosamente. Se notificó a la administradora para coordinar con el proveedor.',
+            'purchase_order' => new PurchaseOrderResource($order),
+            'incident' => new DeliveryIncidentResource($result),
+        ], 201);
     }
 
     #[OA\Post(
@@ -420,7 +531,7 @@ class PurchaseOrderController extends Controller
 
         if ($order->status?->name !== PurchaseOrderStatus::SOLICITADA) {
             return response()->json([
-                'message' => 'Solo se pueden cancelar órdenes en estado solicitada. El estado actual es: ' . ($order->status?->name ?? 'desconocido'),
+                'message' => 'Solo se pueden cancelar órdenes en estado solicitada. El estado actual es: '.($order->status?->name ?? 'desconocido'),
             ], 422);
         }
 

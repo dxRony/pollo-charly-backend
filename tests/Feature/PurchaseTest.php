@@ -7,7 +7,6 @@ namespace Tests\Feature;
 use App\Models\AlertOrigin;
 use App\Models\AlertStatus;
 use App\Models\InventoryMovement;
-use App\Models\InventoryMovementType;
 use App\Models\MeasurementUnit;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderStatus;
@@ -281,12 +280,25 @@ test('Rechaza aprobacion con proveedor inactivo', function () {
         ->assertJsonPath('message', 'El proveedor seleccionado está inactivo o no existe.');
 });
 
-test('Solo administradores pueden acceder al modulo de compras', function () {
+test('Restricciones de permisos para solicitudes y ordenes de compra', function () {
+    $cookRole = Role::where('name', 'Cocinero')->first();
+    $cookUser = User::factory()->create([
+        'role_id' => $cookRole->id,
+        'email' => 'cocinero_test@pollocharly.com',
+    ]);
+
+    // Mesero no puede acceder a solicitudes de compra
     $responseRequests = $this->actingAs($this->waiterUser)
         ->getJson('/api/purchase-requests');
     $responseRequests->assertForbidden();
 
-    $responseOrders = $this->actingAs($this->waiterUser)
+    // Mesero no puede crear órdenes de compra
+    $responseCreate = $this->actingAs($this->waiterUser)
+        ->postJson('/api/purchase-orders', []);
+    $responseCreate->assertForbidden();
+
+    // Cocinero no puede acceder a órdenes de compra
+    $responseCookOrders = $this->actingAs($cookUser)
         ->getJson('/api/purchase-orders');
-    $responseOrders->assertForbidden();
+    $responseCookOrders->assertForbidden();
 });

@@ -11,14 +11,21 @@ use App\Http\Resources\DeliveryIncidentResource;
 use App\Http\Resources\PurchaseOrderResource;
 use App\Http\Resources\SupplierResource;
 use App\Models\DeliveryIncident;
+use App\Models\InventoryMovement;
+use App\Models\InventoryMovementType;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\SupplierSupply;
+use App\Models\Supply;
+use App\Models\User;
+use App\Notifications\DeliveryIncidentNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 class SupplierController extends Controller
@@ -435,7 +442,7 @@ class SupplierController extends Controller
                 $purchaseOrder->save();
             } else {
                 // Generar registro de orden/recepción de entrega
-                $uniqueCode = 'ENT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+                $uniqueCode = 'ENT-'.date('Ymd').'-'.strtoupper(substr(uniqid(), -4));
                 $total = 0.00;
 
                 if (! empty($validated['items'])) {
@@ -482,6 +489,37 @@ class SupplierController extends Controller
                     'description' => $validated['description'],
                     'evidence_path' => $validated['evidence_path'] ?? null,
                 ]);
+            } else {
+                // Actualizar existencias e inventario conforme (HU-10 y HU-14)
+                $compraEntradaType = InventoryMovementType::firstOrCreate(
+                    ['name' => InventoryMovementType::COMPRA_ENTRADA],
+                    ['name' => InventoryMovementType::COMPRA_ENTRADA]
+                );
+
+                $purchaseOrder->load('items');
+                foreach ($purchaseOrder->items as $orderItem) {
+                    $supply = Supply::where('id', $orderItem->supply_id)->lockForUpdate()->first();
+                    if ($supply) {
+                        $prevStock = (float) $supply->current_stock;
+                        $qty = (float) ($orderItem->received_quantity ?? $orderItem->ordered_quantity);
+                        $newStock = round($prevStock + $qty, 2);
+                        $supply->current_stock = $newStock;
+                        $supply->save();
+
+                        InventoryMovement::create([
+                            'supply_id' => $supply->id,
+                            'inventory_movement_type_id' => $compraEntradaType->id,
+                            'user_id' => $user->id,
+                            'order_id' => null,
+                            'order_item_id' => null,
+                            'purchase_order_id' => $purchaseOrder->id,
+                            'quantity' => $qty,
+                            'previous_stock' => $prevStock,
+                            'new_stock' => $newStock,
+                            'reason' => "Recepción conforme de entrega proveedor {$supplier->company_name} (Orden #{$purchaseOrder->code})",
+                        ]);
+                    }
+                }
             }
 
             return [
@@ -498,6 +536,19 @@ class SupplierController extends Controller
         if ($result['incident']) {
             $result['incident']->load(['type', 'status', 'receivingUser', 'purchaseOrder']);
             $incidentResource = new DeliveryIncidentResource($result['incident']);
+
+            // Notificar por correo a las administradoras activas (Scenario 2)
+            try {
+                $adminRole = Role::where('name', 'Administrador')->first();
+                if ($adminRole) {
+                    $admins = User::where('role_id', $adminRole->id)->where('is_active', true)->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new DeliveryIncidentNotification($result['incident']));
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo enviar notificación de incidencia a las administradoras: '.$e->getMessage());
+            }
         }
 
         $message = $result['has_incident']
