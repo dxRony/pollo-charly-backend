@@ -324,3 +324,27 @@ test('non-admin users only see their own inventory movements in list and cannot 
         ->getJson("/api/inventory-movements/{$cookMovement->id}")
         ->assertStatus(200);
 });
+
+test('cannot directly attend an inventory adjustment alert via supply-alerts attend endpoint', function () {
+    $response = $this->actingAs($this->waiterUser)->postJson('/api/inventory-movements', [
+        'supply_id' => $this->supply->id,
+        'type' => 'ajuste',
+        'new_stock' => 12,
+        'reason' => 'Ajuste para test de atencion directa',
+    ]);
+
+    $response->assertStatus(201);
+    $movementId = $response->json('movement.id');
+    $alert = SupplyAlert::where('inventory_movement_id', $movementId)->firstOrFail();
+
+    $attendResponse = $this->actingAs($this->adminUser)
+        ->postJson("/api/supply-alerts/{$alert->id}/attend");
+
+    $attendResponse->assertStatus(422)
+        ->assertJsonFragment([
+            'message' => 'Esta alerta corresponde a una solicitud de ajuste de inventario. Debe aprobarse o rechazarse desde el módulo de revisión de ajustes.',
+        ]);
+
+    $alert->refresh();
+    expect($alert->status->name)->toBe(AlertStatus::PENDING);
+});
