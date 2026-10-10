@@ -165,11 +165,41 @@ test('Scenario: Datos de proveedor incorrectos o incompletos no guardan el regis
         ->postJson('/api/suppliers', $payloadInvalid);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['company_name', 'email', 'supplies.0.supply_id', 'supplies.0.agreed_price']);
+        ->assertJsonValidationErrors(['company_name', 'email', 'delivery_day_ids', 'supplies.0.supply_id', 'supplies.0.agreed_price']);
 
     $this->assertDatabaseMissing('suppliers', [
         'email' => 'correo-no-valido',
     ]);
+});
+
+test('Crear o actualizar un proveedor requiere al menos un día de entrega seleccionado', function () {
+    // Intento de creación con arreglo de días vacío
+    $responseCreate = $this->actingAs($this->adminUser)->postJson('/api/suppliers', [
+        'company_name' => 'Proveedor Sin Días',
+        'delivery_day_ids' => [],
+    ]);
+
+    $responseCreate->assertStatus(422)
+        ->assertJsonValidationErrors(['delivery_day_ids']);
+    expect($responseCreate->json('errors.delivery_day_ids.0'))->toContain('Debe seleccionar al menos un día de entrega.');
+
+    // Crear proveedor válido
+    $lunes = DeliveryDay::where('name', 'Lunes')->first();
+    $supplier = Supplier::create([
+        'company_name' => 'Proveedor Con Días',
+        'is_active' => true,
+    ]);
+    $supplier->deliveryDays()->sync([$lunes->id]);
+
+    // Intento de actualización enviando arreglo vacío de días
+    $responseUpdate = $this->actingAs($this->adminUser)->putJson("/api/suppliers/{$supplier->id}", [
+        'company_name' => 'Proveedor Con Días Modificado',
+        'delivery_day_ids' => [],
+    ]);
+
+    $responseUpdate->assertStatus(422)
+        ->assertJsonValidationErrors(['delivery_day_ids']);
+    expect($responseUpdate->json('errors.delivery_day_ids.0'))->toContain('Debe seleccionar al menos un día de entrega.');
 });
 
 test('Scenario: Desactivar un proveedor realiza baja logica y conserva su historial de compras', function () {

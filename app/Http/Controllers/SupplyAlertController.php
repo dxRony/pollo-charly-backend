@@ -75,6 +75,8 @@ class SupplyAlertController extends Controller
             'origin',
             'status',
             'user.role',
+            'inventoryMovement.supply.measurementUnit',
+            'inventoryMovement.user.role',
             'inventoryMovement.movementType',
             'inventoryMovement.adjustmentStatus',
         ]);
@@ -270,6 +272,8 @@ class SupplyAlertController extends Controller
             'origin',
             'status',
             'user.role',
+            'inventoryMovement.supply.measurementUnit',
+            'inventoryMovement.user.role',
             'inventoryMovement.movementType',
             'inventoryMovement.adjustmentStatus',
         ])->find($id);
@@ -353,6 +357,12 @@ class SupplyAlertController extends Controller
             if ($alert->status?->name === AlertStatus::ATTENDED) {
                 return response()->json([
                     'message' => 'La alerta de reposición ya ha sido atendida previamente y no puede marcarse nuevamente.',
+                ], 422);
+            }
+
+            if ($alert->inventory_movement_id) {
+                return response()->json([
+                    'message' => 'Esta alerta corresponde a una solicitud de ajuste de inventario. Debe aprobarse o rechazarse desde el módulo de revisión de ajustes.',
                 ], 422);
             }
 
