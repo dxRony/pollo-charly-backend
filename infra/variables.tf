@@ -51,6 +51,40 @@ variable "initial_admin_name" {
   default     = "Administrador Pollo Charly"
 }
 
+variable "mail_provider" {
+  description = "Proveedor de correo activo: \"smtp\" (por ejemplo Gmail con contraseña de aplicación) o \"ses\" (Amazon SES, que en sandbox solo envía a correos verificados)."
+  type        = string
+  default     = "smtp"
+
+  validation {
+    condition     = contains(["smtp", "ses"], var.mail_provider)
+    error_message = "mail_provider debe ser \"smtp\" o \"ses\"."
+  }
+}
+
+variable "smtp_username" {
+  description = "Cuenta SMTP que envía los correos (en Gmail es también el remitente). Obligatoria si mail_provider es \"smtp\"."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.mail_provider != "smtp" || var.smtp_username != null
+    error_message = "Con mail_provider = \"smtp\" hay que indicar smtp_username."
+  }
+}
+
+variable "smtp_host" {
+  description = "Servidor SMTP."
+  type        = string
+  default     = "smtp.gmail.com"
+}
+
+variable "smtp_port" {
+  description = "Puerto SMTP (587 usa STARTTLS)."
+  type        = number
+  default     = 587
+}
+
 variable "ses_sender_email" {
   description = "Remitente de los correos del sistema. Si es null se usa el correo del administrador inicial."
   type        = string
