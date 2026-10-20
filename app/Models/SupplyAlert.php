@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'alert_status_id',
     'user_id',
     'purchase_request_id',
+    'inventory_movement_id',
     'notes',
 ])]
 class SupplyAlert extends Model
@@ -58,5 +59,13 @@ class SupplyAlert extends Model
     public function purchaseRequest(): BelongsTo
     {
         return $this->belongsTo(PurchaseRequest::class);
+    }
+
+    /**
+     * @return BelongsTo<InventoryMovement, $this>
+     */
+    public function inventoryMovement(): BelongsTo
+    {
+        return $this->belongsTo(InventoryMovement::class);
     }
 }

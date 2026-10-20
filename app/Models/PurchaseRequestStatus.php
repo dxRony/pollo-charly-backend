@@ -15,7 +15,9 @@ class PurchaseRequestStatus extends Model
 
     public const PENDIENTE = 'pendiente';
     public const APROBADA = 'aprobada';
-    public const RECHAZADA = 'rechazada';
+    public const RECHAZADA_SIN_COMPRAR = 'rechazada_sin_comprar';
+    public const RECHAZADA = 'rechazada_sin_comprar';
+    public const PROCESADA = 'procesada';
 
     /**
      * @return HasMany<PurchaseRequest, $this>

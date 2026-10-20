@@ -23,6 +23,268 @@
         }
     ],
     "paths": {
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Iniciar sesión en el sistema",
+                "description": "Autentica a un usuario existente mediante sus credenciales y emite un token Bearer (Sanctum) para consumir los endpoints protegidos.",
+                "operationId": "login",
+                "requestBody": {
+                    "description": "Credenciales del usuario",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Autenticación exitosa (retorna token o indica si se requiere verificación 2FA).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "two_factor_required": {
+                                            "description": "Indica si se requiere completar el segundo factor (código por correo)",
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "description": "Mensaje informativo en caso de requerirse 2FA",
+                                            "type": "string",
+                                            "example": "Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.",
+                                            "nullable": true
+                                        },
+                                        "email": {
+                                            "description": "Correo al que fue enviado el código 2FA",
+                                            "type": "string",
+                                            "example": "admin@pollocharly.com",
+                                            "nullable": true
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        },
+                                        "token": {
+                                            "description": "Token de acceso Bearer (presente cuando 2FA no es requerido)",
+                                            "type": "string",
+                                            "example": "1|qWeRtYuIoP1234567890abcdef...",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación o credenciales incorrectas / cuenta desactivada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Las credenciales no coinciden con nuestros registros."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Las credenciales no coinciden con nuestros registros."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Cerrar sesión (revocar token actual)",
+                "description": "Revoca el token de acceso personal actualmente utilizado por el usuario, finalizando su sesión activa.",
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Sesión cerrada correctamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/me": {
+            "get": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Obtener datos del usuario autenticado",
+                "description": "Obtiene los detalles del perfil y rol del usuario correspondiente al token Bearer autenticado.",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "Información del usuario autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Actualizar perfil del usuario autenticado",
+                "description": "Actualiza los datos personales (nombre y correo electrónico) del usuario autenticado.",
+                "operationId": "updateProfile",
+                "requestBody": {
+                    "description": "Datos actualizados del perfil",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateProfileRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Perfil actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Perfil actualizado exitosamente."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/UserResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación (campos requeridos, formato inválido o correo duplicado).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El correo electrónico ya está registrado por otro usuario."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/me/password": {
             "put": {
                 "tags": [
@@ -496,188 +758,6 @@
                     },
                     "401": {
                         "description": "No autenticado.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/login": {
-            "post": {
-                "tags": [
-                    "Autenticación"
-                ],
-                "summary": "Iniciar sesión en el sistema",
-                "description": "Autentica a un usuario existente mediante sus credenciales y emite un token Bearer (Sanctum) para consumir los endpoints protegidos.",
-                "operationId": "login",
-                "requestBody": {
-                    "description": "Credenciales del usuario",
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LoginRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Autenticación exitosa (retorna token o indica si se requiere verificación 2FA).",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "two_factor_required": {
-                                            "description": "Indica si se requiere completar el segundo factor (código por correo)",
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "description": "Mensaje informativo en caso de requerirse 2FA",
-                                            "type": "string",
-                                            "example": "Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.",
-                                            "nullable": true
-                                        },
-                                        "email": {
-                                            "description": "Correo al que fue enviado el código 2FA",
-                                            "type": "string",
-                                            "example": "admin@pollocharly.com",
-                                            "nullable": true
-                                        },
-                                        "user": {
-                                            "$ref": "#/components/schemas/UserResource"
-                                        },
-                                        "token": {
-                                            "description": "Token de acceso Bearer (presente cuando 2FA no es requerido)",
-                                            "type": "string",
-                                            "example": "1|qWeRtYuIoP1234567890abcdef...",
-                                            "nullable": true
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Error de validación o credenciales incorrectas / cuenta desactivada.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Las credenciales no coinciden con nuestros registros."
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "example": {
-                                                "email": [
-                                                    "Las credenciales no coinciden con nuestros registros."
-                                                ]
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/logout": {
-            "post": {
-                "tags": [
-                    "Autenticación"
-                ],
-                "summary": "Cerrar sesión (revocar token actual)",
-                "description": "Revoca el token de acceso personal actualmente utilizado por el usuario, finalizando su sesión activa.",
-                "operationId": "logout",
-                "responses": {
-                    "200": {
-                        "description": "Sesión cerrada exitosamente.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Sesión cerrada correctamente."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/me": {
-            "get": {
-                "tags": [
-                    "Autenticación"
-                ],
-                "summary": "Obtener datos del usuario autenticado",
-                "description": "Obtiene los detalles del perfil y rol del usuario correspondiente al token Bearer autenticado.",
-                "operationId": "me",
-                "responses": {
-                    "200": {
-                        "description": "Información del usuario autenticado.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/components/schemas/UserResource"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "No autenticado. El token provisto es inválido o no fue enviado.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1600,6 +1680,342 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-days": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar días de entrega",
+                "description": "Obtiene el listado de los días de la semana para entregas de proveedores.",
+                "operationId": "listDeliveryDays",
+                "responses": {
+                    "200": {
+                        "description": "Listado de días de entrega obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryDayResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incident-types": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar tipos de incidencias de entrega",
+                "description": "Obtiene los tipos tipificados de anomalías o incidencias en entregas (peso incompleto, producto dañado, retraso, etc.).",
+                "operationId": "listDeliveryIncidentTypes",
+                "responses": {
+                    "200": {
+                        "description": "Listado de tipos de incidencias obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentTypeResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incident-statuses": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar estados de incidencias de entrega",
+                "description": "Obtiene los estados de seguimiento de incidencias (reportada, en corrección, resuelta).",
+                "operationId": "listDeliveryIncidentStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Listado de estados obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentStatusResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incidents": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar incidencias de entrega",
+                "description": "Obtiene el listado general de incidencias de entrega registradas, permitiendo filtrar por proveedor, tipo de incidencia y estado.",
+                "operationId": "listDeliveryIncidents",
+                "parameters": [
+                    {
+                        "name": "supplier_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de proveedor",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "delivery_incident_type_id",
+                        "in": "query",
+                        "description": "Filtrar por tipo de incidencia",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "delivery_incident_status_id",
+                        "in": "query",
+                        "description": "Filtrar por estado de la incidencia",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de incidencias obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Registrar incidencia de entrega",
+                "description": "Registra directamente una nueva incidencia de entrega y actualiza el historial del proveedor.",
+                "operationId": "createDeliveryIncident",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateDeliveryIncidentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Incidencia registrada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Incidencia de entrega registrada exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos inválidos."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incidents/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Consultar detalle de incidencia de entrega",
+                "description": "Consulta los detalles de una incidencia de entrega.",
+                "operationId": "getDeliveryIncident",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la incidencia",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Incidencia obtenida correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Incidencia no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/delivery-incidents/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Actualizar estado de una incidencia de entrega",
+                "description": "Actualiza el estado de seguimiento de una incidencia (reportada, en corrección o resuelta).",
+                "operationId": "updateDeliveryIncidentStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la incidencia",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDeliveryIncidentStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado de incidencia actualizado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Estado de la incidencia actualizado exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Incidencia no encontrada."
                     }
                 },
                 "security": [
@@ -4008,6 +4424,666 @@
                 }
             }
         },
+        "/api/purchase-orders": {
+            "get": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Listar órdenes de compra",
+                "description": "Obtiene el listado paginado de órdenes y compras a proveedores, con filtros por estado, proveedor, rango de fechas y texto.",
+                "operationId": "listPurchaseOrders",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filtrar por nombre de estado (solicitada, recibida_completa, recibida_con_incidencia, cancelada)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "purchase_order_status_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del estado",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "supplier_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del proveedor",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por código de orden o nombre de proveedor",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de órdenes obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PurchaseOrderResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado."
+                    },
+                    "403": {
+                        "description": "No autorizado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Registrar compra manual",
+                "description": "Registra una compra manual directa a un proveedor sin necesidad de alerta previa, calculando automáticamente subtotales y total.",
+                "operationId": "createPurchaseOrder",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePurchaseOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Compra registrada exitosamente."
+                    },
+                    "422": {
+                        "description": "Error de validación."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-orders/statuses": {
+            "get": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Listar estados de órdenes de compra",
+                "description": "Obtiene el catálogo de estados disponibles para órdenes de compra.",
+                "operationId": "listPurchaseOrderStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de estados obtenido exitosamente."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-orders/{id}": {
+            "get": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Consultar detalle de orden de compra",
+                "description": "Obtiene el detalle completo de una orden de compra, sus productos, cantidades, total e incidencias asociadas.",
+                "operationId": "getPurchaseOrder",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la orden",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la orden obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "purchase_order": {
+                                            "$ref": "#/components/schemas/PurchaseOrderResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Orden no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-orders/{id}/receive": {
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Confirmar recepción de compra",
+                "description": "Confirma la recepción de una compra entregada conforme, actualiza el stock del almacén y registra el movimiento de inventario correspondiente.",
+                "operationId": "receivePurchaseOrder",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la orden",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReceivePurchaseOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Recepción confirmada e inventario actualizado exitosamente."
+                    },
+                    "422": {
+                        "description": "La orden no se encuentra en estado solicitada."
+                    },
+                    "404": {
+                        "description": "Orden no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-orders/{id}/incident": {
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Reportar incidencia en orden de compra",
+                "description": "Registra una incidencia de entrega no conforme asociada a una orden de compra y notifica a las administradoras.",
+                "operationId": "reportPurchaseOrderIncident",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la orden de compra",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReportOrderIncidentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Incidencia reportada exitosamente."
+                    },
+                    "422": {
+                        "description": "Error de validación."
+                    },
+                    "404": {
+                        "description": "Orden no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-orders/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Cancelar orden de compra",
+                "description": "Cancela una orden de compra pendiente de entrega.",
+                "operationId": "cancelPurchaseOrder",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la orden",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Orden cancelada exitosamente."
+                    },
+                    "422": {
+                        "description": "La orden no se puede cancelar en su estado actual."
+                    },
+                    "404": {
+                        "description": "Orden no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-requests": {
+            "get": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Listar solicitudes de compra",
+                "description": "Obtiene el listado paginado de solicitudes de compra generadas a partir de alertas de reposición o ingresadas manualmente.",
+                "operationId": "listPurchaseRequests",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filtrar por nombre de estado (pendiente, aprobada, rechazada_sin_comprar, procesada)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "purchase_request_status_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de estado",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por motivo o nombre de insumo",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de solicitudes obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PurchaseRequestResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado."
+                    },
+                    "403": {
+                        "description": "No autorizado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Registrar solicitud de compra",
+                "description": "Crea manualmente una solicitud de compra de insumos con cantidades sugeridas.",
+                "operationId": "createPurchaseRequest",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePurchaseRequestRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Solicitud creada exitosamente."
+                    },
+                    "422": {
+                        "description": "Error de validación."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-requests/statuses": {
+            "get": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Listar estados de solicitudes de compra",
+                "description": "Obtiene el catálogo de estados disponibles para solicitudes de compra.",
+                "operationId": "listPurchaseRequestStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Catálogo de estados obtenido exitosamente."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-requests/{id}": {
+            "get": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Consultar detalle de solicitud de compra",
+                "description": "Obtiene el detalle de una solicitud de compra con sus insumos, cantidades sugeridas y aprobadas.",
+                "operationId": "getPurchaseRequest",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la solicitud",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la solicitud obtenido exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "purchase_request": {
+                                            "$ref": "#/components/schemas/PurchaseRequestResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Solicitud no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-requests/{id}/approve": {
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Aprobar solicitud de compra y generar orden",
+                "description": "Aprueba una solicitud de compra, define cantidades y proveedor, y genera automáticamente la orden de compra.",
+                "operationId": "approvePurchaseRequest",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la solicitud",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApprovePurchaseRequestRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Solicitud aprobada y orden de compra generada exitosamente."
+                    },
+                    "422": {
+                        "description": "Error de validación o solicitud ya procesada."
+                    },
+                    "404": {
+                        "description": "Solicitud no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/purchase-requests/{id}/reject": {
+            "post": {
+                "tags": [
+                    "Compras y Abastecimiento"
+                ],
+                "summary": "Rechazar solicitud de compra",
+                "description": "Rechaza una solicitud de compra sin generar ninguna orden de compra, cerrando la solicitud.",
+                "operationId": "rejectPurchaseRequest",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la solicitud",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RejectPurchaseRequestRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Solicitud rechazada exitosamente."
+                    },
+                    "422": {
+                        "description": "La solicitud no se encuentra en estado pendiente."
+                    },
+                    "404": {
+                        "description": "Solicitud no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/reports/dashboard": {
             "get": {
                 "tags": [
@@ -4319,6 +5395,142 @@
                 "responses": {
                     "200": {
                         "description": "Reporte obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/inventory-waste": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de mermas y pérdidas de inventario",
+                "description": "Genera el reporte de mermas y pérdidas de inventario del periodo filtrado, calculando costos monetarios por insumo y métricas consolidadas. Soporta exportación a PDF y Excel.",
+                "operationId": "getInventoryWasteReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "supply_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "json (por defecto), pdf o xlsx",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte de mermas obtenido exitosamente."
+                    },
+                    "403": {
+                        "description": "No autorizado. Se requiere rol de Administrador."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/supplier-purchases": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de compras y rendimiento de proveedores",
+                "description": "Genera el reporte de compras y rendimiento de proveedores del periodo filtrado, calculando volumen de compra, cumplimiento de entregas y puntualidad. Soporta exportación a PDF y Excel.",
+                "operationId": "getSupplierPurchasesReport",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "supplier_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "json (por defecto), pdf o xlsx",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte de compras y proveedores obtenido exitosamente."
                     },
                     "403": {
                         "description": "No autorizado. Se requiere rol de Administrador."
@@ -5425,6 +6637,477 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Listar y buscar proveedores",
+                "description": "Obtiene el listado de proveedores registrados, permitiendo filtrar por término de búsqueda (empresa, contacto, teléfono, correo), estado activo y día de entrega habitual.",
+                "operationId": "listSuppliers",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por razón social, contacto, teléfono o correo",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Filtrar por estado activo/inactivo",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "delivery_day_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de día de entrega habitual",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Cantidad de elementos por página (por defecto 15)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de proveedores obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SupplierResource"
+                                            }
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Registrar un nuevo proveedor",
+                "description": "Registra un nuevo proveedor en el sistema con información de contacto, días de entrega asignados y lista de productos/insumos con precios acordados.",
+                "operationId": "createSupplier",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSupplierRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Proveedor registrado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor registrado exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos incorrectos o incompletos."
+                    },
+                    "403": {
+                        "description": "Acceso no autorizado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Consultar información detallada e historial de un proveedor",
+                "description": "Consulta el detalle completo de un proveedor, incluyendo información de contacto, días de entrega, productos con precios pactados, historial de compras e historial de incidencias.",
+                "operationId": "getSupplier",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle e historial del proveedor obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Actualizar información de un proveedor",
+                "description": "Actualiza los datos de contacto, días de entrega y productos/precios pactados con un proveedor.",
+                "operationId": "updateSupplier",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSupplierRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Proveedor actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor actualizado exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos inválidos."
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Dar de baja lógica a un proveedor",
+                "description": "Desactiva lógicamente al proveedor del sistema conservando todo su historial asociado.",
+                "operationId": "deleteSupplier",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Baja lógica realizada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Activar o desactivar proveedor (baja lógica)",
+                "description": "Realiza una baja lógica o reactivación del proveedor, conservando intacto su historial de compras e incidencias.",
+                "operationId": "toggleSupplierStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Estado del proveedor actualizado exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SupplierResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proveedor desactivado exitosamente (baja lógica)."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}/deliveries": {
+            "post": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Registrar recepción de entrega (con o sin incidencia)",
+                "description": "Registra la recepción de una entrega de proveedor realizada por el personal (mesero/administrador). Si no se detectan problemas, se actualiza el historial como entrega completa. Si se detectan anomalías de peso, calidad o retraso, se registra la incidencia y se actualiza el historial.",
+                "operationId": "recordSupplierDelivery",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordDeliveryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Entrega procesada y registrada en el historial correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "purchase_order": {
+                                            "$ref": "#/components/schemas/PurchaseOrderResource"
+                                        },
+                                        "incident": {
+                                            "oneOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                                }
+                                            ],
+                                            "nullable": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Entrega registrada exitosamente sin incidencias."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Datos de validación inválidos."
+                    },
+                    "404": {
+                        "description": "Proveedor u orden no encontrada."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/suppliers/{id}/history": {
+            "get": {
+                "tags": [
+                    "Gestión de Proveedores"
+                ],
+                "summary": "Consultar historial de entregas e incidencias de un proveedor",
+                "description": "Obtiene el historial de compras/entregas y de incidencias del proveedor especificado.",
+                "operationId": "getSupplierHistory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del proveedor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Historial obtenido correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "purchase_orders": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PurchaseOrderResource"
+                                            }
+                                        },
+                                        "delivery_incidents": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DeliveryIncidentResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proveedor no encontrado."
                     }
                 },
                 "security": [
@@ -7487,6 +9170,32 @@
                     "password_confirmation": "nuevaPassword123"
                 }
             },
+            "UpdateProfileRequest": {
+                "title": "Update Profile Request",
+                "description": "Datos permitidos para modificar el perfil del usuario autenticado",
+                "required": [
+                    "name",
+                    "email"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nombre completo del usuario",
+                        "type": "string",
+                        "example": "Carlos Alberto Mesero"
+                    },
+                    "email": {
+                        "description": "Correo electrónico del usuario",
+                        "type": "string",
+                        "format": "email",
+                        "example": "carlos.mesero@pollocharly.com"
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "name": "Carlos Alberto Mesero",
+                    "email": "carlos.mesero@pollocharly.com"
+                }
+            },
             "VerifyTwoFactorRequest": {
                 "title": "Verify Two-Factor Authentication Request",
                 "description": "Datos requeridos para validar el código temporal de verificación de dos factores (2FA)",
@@ -8232,6 +9941,253 @@
                 },
                 "type": "object"
             },
+            "ApprovePurchaseRequestRequest": {
+                "title": "Approve Purchase Request Request",
+                "description": "Datos para aprobar una solicitud de compra y generar la orden de compra al proveedor",
+                "required": [
+                    "supplier_id"
+                ],
+                "properties": {
+                    "supplier_id": {
+                        "description": "ID del proveedor seleccionado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "expected_date": {
+                        "description": "Fecha prevista de entrega (YYYY-MM-DD)",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-15",
+                        "nullable": true
+                    },
+                    "items": {
+                        "description": "Lista opcional de insumos con cantidades aprobadas y precios (si no se especifica, toma los sugeridos)",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "quantity": {
+                                    "type": "number",
+                                    "example": 20
+                                },
+                                "unit_price": {
+                                    "description": "Precio unitario pactado (opcional)",
+                                    "type": "number",
+                                    "example": 35,
+                                    "nullable": true
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supplier_id": 1,
+                    "expected_date": "2026-10-15",
+                    "items": [
+                        {
+                            "supply_id": 1,
+                            "quantity": 20,
+                            "unit_price": 35
+                        }
+                    ]
+                }
+            },
+            "CreatePurchaseOrderRequest": {
+                "title": "Create Purchase Order Request",
+                "description": "Datos para registrar una compra a un proveedor (con o sin solicitud previa)",
+                "required": [
+                    "supplier_id",
+                    "items"
+                ],
+                "properties": {
+                    "supplier_id": {
+                        "description": "ID del proveedor",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "purchase_request_id": {
+                        "description": "ID opcional de solicitud de compra vinculada",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "expected_date": {
+                        "description": "Fecha prevista de entrega (YYYY-MM-DD)",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-15",
+                        "nullable": true
+                    },
+                    "items": {
+                        "description": "Lista de insumos, cantidades y precios",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "ordered_quantity": {
+                                    "type": "number",
+                                    "example": 25
+                                },
+                                "unit_price": {
+                                    "description": "Precio unitario pactado (opcional)",
+                                    "type": "number",
+                                    "example": 35,
+                                    "nullable": true
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supplier_id": 1,
+                    "purchase_request_id": null,
+                    "expected_date": "2026-10-15",
+                    "items": [
+                        {
+                            "supply_id": 1,
+                            "ordered_quantity": 25,
+                            "unit_price": 35
+                        }
+                    ]
+                }
+            },
+            "CreatePurchaseRequestRequest": {
+                "title": "Create Purchase Request Request",
+                "description": "Datos para registrar una solicitud de compra de insumos",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "reason": {
+                        "description": "Motivo u observaciones de la solicitud",
+                        "type": "string",
+                        "example": "Reposición de insumos de cocina",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "supply_alert_id": {
+                        "description": "ID opcional de la alerta que origina la solicitud",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "items": {
+                        "description": "Lista de insumos a solicitar con su cantidad sugerida",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "suggested_quantity": {
+                                    "type": "number",
+                                    "example": 20
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "reason": "Reposición de insumos críticos de cocina",
+                    "supply_alert_id": 1,
+                    "items": [
+                        {
+                            "supply_id": 1,
+                            "suggested_quantity": 20
+                        }
+                    ]
+                }
+            },
+            "ReceivePurchaseOrderRequest": {
+                "title": "Receive Purchase Order Request",
+                "description": "Datos para confirmar la recepción de una compra a proveedor",
+                "properties": {
+                    "received_date": {
+                        "description": "Fecha efectiva de recepción (YYYY-MM-DD)",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-15",
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Notas u observaciones de recepción",
+                        "type": "string",
+                        "example": "Recepción conforme en bodega",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "received_date": "2026-10-15",
+                    "notes": "Mercancía recibida completa y en perfecto estado."
+                }
+            },
+            "RejectPurchaseRequestRequest": {
+                "title": "Reject Purchase Request Request",
+                "description": "Datos opcionales para rechazar una solicitud de compra sin generar orden",
+                "properties": {
+                    "reason": {
+                        "description": "Motivo u observación del rechazo",
+                        "type": "string",
+                        "example": "No se requiere compra en este momento.",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "reason": "Se verificó suficiente stock disponible en almacén secundario."
+                }
+            },
+            "ReportOrderIncidentRequest": {
+                "title": "Report Order Incident Request",
+                "description": "Datos para reportar una incidencia durante la recepción de una compra a proveedor",
+                "required": [
+                    "delivery_incident_type_id",
+                    "description"
+                ],
+                "properties": {
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de incidencia (peso_incompleto, producto_danado, producto_equivocado, retraso, otro)",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "description": {
+                        "description": "Detalle o descripción de la no conformidad detectada",
+                        "type": "string",
+                        "example": "Diferencia de peso encontrada en balanza.",
+                        "maxLength": 1000
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL opcional de evidencia fotográfica",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true,
+                        "maxLength": 2048
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "delivery_incident_type_id": 1,
+                    "description": "Faltan 5 kg de pechuga de pollo respecto a la cantidad solicitada.",
+                    "evidence_path": null
+                }
+            },
             "CreateTableRequest": {
                 "title": "Create Table Request",
                 "description": "Datos necesarios para registrar una nueva mesa en el salón del restaurante",
@@ -8394,6 +10350,413 @@
                 },
                 "type": "object"
             },
+            "CreateDeliveryIncidentRequest": {
+                "title": "Create Delivery Incident Request",
+                "description": "Datos para reportar una incidencia de entrega directamente",
+                "required": [
+                    "supplier_id",
+                    "delivery_incident_type_id",
+                    "description"
+                ],
+                "properties": {
+                    "supplier_id": {
+                        "description": "ID del proveedor al que corresponde la entrega",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra si existe",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de anomalía detectada",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "description": {
+                        "description": "Explicación detallada del problema de peso, calidad o retraso",
+                        "type": "string",
+                        "example": "El proveedor entregó 10 kg en lugar de los 15 kg solicitados.",
+                        "maxLength": 1000,
+                        "minLength": 5
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL del comprobante de incidencia",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true,
+                        "maxLength": 255
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supplier_id": 1,
+                    "purchase_order_id": 2,
+                    "delivery_incident_type_id": 1,
+                    "description": "El proveedor entregó 10 kg en lugar de los 15 kg solicitados.",
+                    "evidence_path": null
+                }
+            },
+            "CreateSupplierRequest": {
+                "title": "Create Supplier Request",
+                "description": "Datos necesarios para registrar un nuevo proveedor en el sistema",
+                "required": [
+                    "company_name"
+                ],
+                "properties": {
+                    "company_name": {
+                        "description": "Razón social o nombre comercial del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola",
+                        "maxLength": 150
+                    },
+                    "contact_name": {
+                        "description": "Nombre de la persona de contacto",
+                        "type": "string",
+                        "example": "Juan Pérez",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "phone": {
+                        "description": "Teléfono de contacto",
+                        "type": "string",
+                        "example": "555-1234",
+                        "nullable": true,
+                        "maxLength": 50
+                    },
+                    "email": {
+                        "description": "Correo electrónico de contacto",
+                        "type": "string",
+                        "format": "email",
+                        "example": "contacto@avicola.com",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "address": {
+                        "description": "Dirección física o fiscal",
+                        "type": "string",
+                        "example": "Av. Industrial 456",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "description": "Estado activo inicial",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "delivery_day_ids": {
+                        "description": "Array de IDs de días de entrega asignados",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            3,
+                            5
+                        ]
+                    },
+                    "supplies": {
+                        "description": "Listado de insumos provistos con precio pactado",
+                        "type": "array",
+                        "items": {
+                            "required": [
+                                "supply_id",
+                                "agreed_price"
+                            ],
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "agreed_price": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "example": 32.5
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "company_name": "Distribuidora Avícola",
+                    "contact_name": "Juan Pérez",
+                    "phone": "555-1234",
+                    "email": "contacto@avicola.com",
+                    "address": "Av. Industrial 456",
+                    "is_active": true,
+                    "delivery_day_ids": [
+                        1,
+                        3,
+                        5
+                    ],
+                    "supplies": [
+                        {
+                            "supply_id": 1,
+                            "agreed_price": 32.5
+                        }
+                    ]
+                }
+            },
+            "RecordDeliveryRequest": {
+                "title": "Record Delivery Request",
+                "description": "Datos para registrar la recepción de una entrega de proveedor, con o sin incidencias",
+                "required": [
+                    "has_incident"
+                ],
+                "properties": {
+                    "has_incident": {
+                        "description": "Indica si se detectó alguna anomalía/incidencia durante la recepción",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra que se recibe (opcional)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de incidencia (obligatorio si has_incident es verdadero)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "description": {
+                        "description": "Descripción detallada de la incidencia (obligatorio si has_incident es verdadero)",
+                        "type": "string",
+                        "example": "El pedido llegó incompleto: faltaron 5 kg.",
+                        "nullable": true,
+                        "maxLength": 1000
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL de comprobante/foto de la incidencia",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Notas u observaciones adicionales de la entrega",
+                        "type": "string",
+                        "example": "Entrega recibida en turno matutino.",
+                        "nullable": true,
+                        "maxLength": 500
+                    },
+                    "items": {
+                        "description": "Detalle de insumos recibidos con sus cantidades",
+                        "type": "array",
+                        "items": {
+                            "required": [
+                                "supply_id",
+                                "received_quantity"
+                            ],
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "received_quantity": {
+                                    "type": "number",
+                                    "example": 15
+                                },
+                                "unit_price": {
+                                    "type": "number",
+                                    "example": 32.5,
+                                    "nullable": true
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "has_incident": true,
+                    "purchase_order_id": 1,
+                    "delivery_incident_type_id": 1,
+                    "description": "El pedido llegó incompleto: faltaron 5 kg de pechuga de pollo.",
+                    "evidence_path": null,
+                    "notes": "Conductor de la entrega firmó acta de diferencia."
+                }
+            },
+            "UpdateDeliveryIncidentStatusRequest": {
+                "title": "Update Delivery Incident Status Request",
+                "description": "Datos para cambiar el estado de seguimiento de una incidencia de entrega",
+                "required": [
+                    "delivery_incident_status_id"
+                ],
+                "properties": {
+                    "delivery_incident_status_id": {
+                        "description": "ID del nuevo estado de la incidencia (1=reportada, 2=en_correccion, 3=resuelta)",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "resolution_notes": {
+                        "description": "Notas de resolución o seguimiento",
+                        "type": "string",
+                        "example": "El proveedor repuso los faltantes.",
+                        "nullable": true,
+                        "maxLength": 500
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "delivery_incident_status_id": 3,
+                    "resolution_notes": "El proveedor repuso los 5 kg faltantes en la siguiente entrega."
+                }
+            },
+            "UpdateSupplierRequest": {
+                "title": "Update Supplier Request",
+                "description": "Datos para actualizar la información de un proveedor",
+                "properties": {
+                    "company_name": {
+                        "description": "Razón social o nombre comercial del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola S.A.",
+                        "maxLength": 150
+                    },
+                    "contact_name": {
+                        "description": "Nombre de la persona de contacto",
+                        "type": "string",
+                        "example": "Juan Carlos Pérez",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "phone": {
+                        "description": "Teléfono de contacto",
+                        "type": "string",
+                        "example": "555-9876",
+                        "nullable": true,
+                        "maxLength": 50
+                    },
+                    "email": {
+                        "description": "Correo electrónico de contacto",
+                        "type": "string",
+                        "format": "email",
+                        "example": "ventas@avicola.com",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "address": {
+                        "description": "Dirección física o fiscal",
+                        "type": "string",
+                        "example": "Av. Industrial 456, Bodega 3",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "description": "Estado activo/inactivo",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "delivery_day_ids": {
+                        "description": "Array de IDs de días de entrega asignados",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            2,
+                            4
+                        ]
+                    },
+                    "supplies": {
+                        "description": "Listado actualizado de insumos provistos con precio pactado",
+                        "type": "array",
+                        "items": {
+                            "required": [
+                                "supply_id",
+                                "agreed_price"
+                            ],
+                            "properties": {
+                                "supply_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "agreed_price": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "example": 33
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "company_name": "Distribuidora Avícola S.A.",
+                    "contact_name": "Juan Carlos Pérez",
+                    "phone": "555-9876",
+                    "email": "ventas@avicola.com",
+                    "address": "Av. Industrial 456, Bodega 3",
+                    "is_active": true,
+                    "delivery_day_ids": [
+                        1,
+                        2,
+                        4
+                    ],
+                    "supplies": [
+                        {
+                            "supply_id": 1,
+                            "agreed_price": 33
+                        }
+                    ]
+                }
+            },
+            "AttendSupplyAlertRequest": {
+                "title": "Attend Supply Alert Request",
+                "description": "Datos opcionales para marcar como atendida una alerta de reposición",
+                "properties": {
+                    "purchase_request_id": {
+                        "description": "ID de la solicitud de compra vinculada (opcional)",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "notes": {
+                        "description": "Notas u observaciones al atender la alerta",
+                        "type": "string",
+                        "example": "Insumo incluido en solicitud de abastecimiento",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "purchase_request_id": 1,
+                    "notes": "Se generó la solicitud de compra SC-0001 para reposición inmediata."
+                }
+            },
+            "CreateSupplyAlertRequest": {
+                "title": "Create Supply Alert Request",
+                "description": "Datos necesarios para generar manualmente una alerta de reposición de insumo",
+                "required": [
+                    "supply_id"
+                ],
+                "properties": {
+                    "supply_id": {
+                        "description": "ID del producto o insumo del catálogo",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "notes": {
+                        "description": "Observación o motivo de la alerta manual",
+                        "type": "string",
+                        "example": "Quedan pocas unidades físicas en bodega",
+                        "nullable": true,
+                        "maxLength": 1000
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "supply_id": 1,
+                    "notes": "El insumo se está agotando más rápido de lo habitual en turno de cocina."
+                }
+            },
             "CreateSupplyRequest": {
                 "title": "Create Supply Request",
                 "description": "Datos necesarios para dar de alta un producto o insumo en el inventario",
@@ -8522,56 +10885,6 @@
                     "minimum_stock": 20,
                     "unit_cost": 38,
                     "is_active": true
-                }
-            },
-            "AttendSupplyAlertRequest": {
-                "title": "Attend Supply Alert Request",
-                "description": "Datos opcionales para marcar como atendida una alerta de reposición",
-                "properties": {
-                    "purchase_request_id": {
-                        "description": "ID de la solicitud de compra vinculada (opcional)",
-                        "type": "integer",
-                        "example": 1,
-                        "nullable": true
-                    },
-                    "notes": {
-                        "description": "Notas u observaciones al atender la alerta",
-                        "type": "string",
-                        "example": "Insumo incluido en solicitud de abastecimiento",
-                        "nullable": true,
-                        "maxLength": 1000
-                    }
-                },
-                "type": "object",
-                "example": {
-                    "purchase_request_id": 1,
-                    "notes": "Se generó la solicitud de compra SC-0001 para reposición inmediata."
-                }
-            },
-            "CreateSupplyAlertRequest": {
-                "title": "Create Supply Alert Request",
-                "description": "Datos necesarios para generar manualmente una alerta de reposición de insumo",
-                "required": [
-                    "supply_id"
-                ],
-                "properties": {
-                    "supply_id": {
-                        "description": "ID del producto o insumo del catálogo",
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "notes": {
-                        "description": "Observación o motivo de la alerta manual",
-                        "type": "string",
-                        "example": "Quedan pocas unidades físicas en bodega",
-                        "nullable": true,
-                        "maxLength": 1000
-                    }
-                },
-                "type": "object",
-                "example": {
-                    "supply_id": 1,
-                    "notes": "El insumo se está agotando más rápido de lo habitual en turno de cocina."
                 }
             },
             "CreateUserRequest": {
@@ -8785,6 +11098,138 @@
                         "format": "date-time",
                         "example": "2026-09-20T12:00:00.000000Z",
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryDayResource": {
+                "title": "Delivery Day Resource",
+                "description": "Día de entrega de proveedores",
+                "properties": {
+                    "id": {
+                        "description": "ID único del día",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre del día (ej. Lunes)",
+                        "type": "string",
+                        "example": "Lunes"
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryIncidentResource": {
+                "title": "Delivery Incident Resource",
+                "description": "Incidencia registrada en la recepción de entrega de un proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID de la incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "purchase_order_id": {
+                        "description": "ID de la orden de compra asociada",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    },
+                    "purchase_order_code": {
+                        "description": "Código de la orden de compra",
+                        "type": "string",
+                        "example": "OC-2026-0001",
+                        "nullable": true
+                    },
+                    "supplier_id": {
+                        "description": "ID del proveedor",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supplier_name": {
+                        "description": "Nombre del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola"
+                    },
+                    "receiving_user_id": {
+                        "description": "ID del usuario que recibió la entrega",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "receiving_user_name": {
+                        "description": "Nombre del usuario receptor",
+                        "type": "string",
+                        "example": "Carlos Mesero"
+                    },
+                    "delivery_incident_type_id": {
+                        "description": "ID del tipo de incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "type": {
+                        "description": "Tipo de incidencia",
+                        "type": "string",
+                        "example": "peso_incompleto"
+                    },
+                    "delivery_incident_status_id": {
+                        "description": "ID del estado de la incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status": {
+                        "description": "Estado actual de la incidencia",
+                        "type": "string",
+                        "example": "reportada"
+                    },
+                    "description": {
+                        "description": "Descripción detallada de la anomalía observada",
+                        "type": "string",
+                        "example": "Faltaron 5 kg de pechuga respecto a lo facturado."
+                    },
+                    "evidence_path": {
+                        "description": "Ruta o URL de evidencia fotográfica si aplica",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "description": "Fecha de registro",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryIncidentStatusResource": {
+                "title": "Delivery Incident Status Resource",
+                "description": "Estado de una incidencia de entrega",
+                "properties": {
+                    "id": {
+                        "description": "ID único del estado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre del estado (reportada, en_correccion, resuelta)",
+                        "type": "string",
+                        "example": "reportada"
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryIncidentTypeResource": {
+                "title": "Delivery Incident Type Resource",
+                "description": "Tipo de incidencia en recepción de entregas",
+                "properties": {
+                    "id": {
+                        "description": "ID único del tipo de incidencia",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nombre identificador del tipo de incidencia",
+                        "type": "string",
+                        "example": "peso_incompleto"
                     }
                 },
                 "type": "object"
@@ -9449,6 +11894,265 @@
                 },
                 "type": "object"
             },
+            "PurchaseOrderItemResource": {
+                "title": "Purchase Order Item Resource",
+                "description": "Ítem de una orden de compra a proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID del ítem",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "description": "ID del insumo",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supply_name": {
+                        "description": "Nombre del insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo"
+                    },
+                    "measurement_unit": {
+                        "description": "Unidad de medida",
+                        "type": "string",
+                        "example": "Kilogramos"
+                    },
+                    "ordered_quantity": {
+                        "description": "Cantidad pedida",
+                        "type": "number",
+                        "example": 20
+                    },
+                    "received_quantity": {
+                        "description": "Cantidad recibida",
+                        "type": "number",
+                        "example": 20,
+                        "nullable": true
+                    },
+                    "unit_price": {
+                        "description": "Precio unitario pactado",
+                        "type": "number",
+                        "example": 35
+                    },
+                    "subtotal": {
+                        "description": "Subtotal del ítem",
+                        "type": "number",
+                        "example": 700
+                    }
+                },
+                "type": "object"
+            },
+            "PurchaseOrderResource": {
+                "title": "Purchase Order Resource",
+                "description": "Orden de compra o entrega de proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID de la orden",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "code": {
+                        "description": "Código único de orden",
+                        "type": "string",
+                        "example": "OC-2026-0001"
+                    },
+                    "supplier_id": {
+                        "description": "ID del proveedor",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supplier_name": {
+                        "description": "Nombre del proveedor",
+                        "type": "string",
+                        "example": "Distribuidora Avícola"
+                    },
+                    "admin_user_id": {
+                        "description": "ID del administrador que generó la orden",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "purchase_order_status_id": {
+                        "description": "ID del estado",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "status": {
+                        "description": "Estado (solicitada, recibida_completa, recibida_con_incidencia, cancelada)",
+                        "type": "string",
+                        "example": "recibida_completa"
+                    },
+                    "total": {
+                        "description": "Total de la orden",
+                        "type": "number",
+                        "example": 1500
+                    },
+                    "expected_date": {
+                        "description": "Fecha prevista de entrega",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-08",
+                        "nullable": true
+                    },
+                    "received_date": {
+                        "description": "Fecha efectiva de recepción",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-08",
+                        "nullable": true
+                    },
+                    "items": {
+                        "description": "Ítems de la orden",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PurchaseOrderItemResource"
+                        }
+                    },
+                    "delivery_incidents": {
+                        "description": "Incidencias asociadas a esta entrega",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                        }
+                    },
+                    "created_at": {
+                        "description": "Fecha de creación",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "PurchaseRequestItemResource": {
+                "title": "Purchase Request Item Resource",
+                "description": "Ítem de una solicitud de compra",
+                "properties": {
+                    "id": {
+                        "description": "ID del ítem",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "description": "ID del insumo",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "supply_name": {
+                        "description": "Nombre del insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo"
+                    },
+                    "supply_code": {
+                        "description": "Código del insumo",
+                        "type": "string",
+                        "example": "INS-001"
+                    },
+                    "measurement_unit": {
+                        "description": "Unidad de medida",
+                        "type": "string",
+                        "example": "Kilogramos"
+                    },
+                    "suggested_quantity": {
+                        "description": "Cantidad sugerida por la alerta o usuario",
+                        "type": "number",
+                        "example": 25
+                    },
+                    "approved_quantity": {
+                        "description": "Cantidad aprobada",
+                        "type": "number",
+                        "example": 20,
+                        "nullable": true
+                    },
+                    "current_unit_cost": {
+                        "description": "Costo unitario referencial del catálogo",
+                        "type": "number",
+                        "example": 35
+                    }
+                },
+                "type": "object"
+            },
+            "PurchaseRequestResource": {
+                "title": "Purchase Request Resource",
+                "description": "Solicitud de compra generada a partir de alertas de reposición o creada manualmente",
+                "properties": {
+                    "id": {
+                        "description": "ID de la solicitud",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "requester_user_id": {
+                        "description": "ID del usuario solicitante",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "requester_user_name": {
+                        "description": "Nombre del usuario solicitante",
+                        "type": "string",
+                        "example": "Administradora"
+                    },
+                    "purchase_request_status_id": {
+                        "description": "ID del estado",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status": {
+                        "description": "Nombre clave del estado (pendiente, aprobada, rechazada_sin_comprar, procesada)",
+                        "type": "string",
+                        "example": "pendiente"
+                    },
+                    "reason": {
+                        "description": "Motivo u observaciones de la solicitud",
+                        "type": "string",
+                        "example": "Reposición por alerta de stock mínimo",
+                        "nullable": true
+                    },
+                    "items": {
+                        "description": "Lista de insumos solicitados con cantidades sugeridas y aprobadas",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PurchaseRequestItemResource"
+                        }
+                    },
+                    "supply_alert_ids": {
+                        "description": "IDs de alertas de reposición vinculadas",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            3
+                        ]
+                    },
+                    "purchase_orders": {
+                        "description": "Órdenes de compra generadas a partir de esta solicitud",
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        },
+                        "example": [
+                            {
+                                "id": 1,
+                                "code": "OC-2026-0001",
+                                "status": "solicitada",
+                                "total": 1250
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "description": "Fecha y hora de creación",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    },
+                    "updated_at": {
+                        "description": "Fecha y hora de última actualización",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    }
+                },
+                "type": "object"
+            },
             "ReceiptTypeResource": {
                 "title": "Receipt Type Resource",
                 "description": "Tipo de comprobante emitido por la venta (ticket, factura)",
@@ -9633,6 +12337,170 @@
                 },
                 "type": "object"
             },
+            "SupplierResource": {
+                "title": "Supplier Resource",
+                "description": "Información completa del proveedor",
+                "properties": {
+                    "id": {
+                        "description": "ID del proveedor",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "company_name": {
+                        "description": "Nombre de la empresa o razón social",
+                        "type": "string",
+                        "example": "Distribuidora Avícola"
+                    },
+                    "contact_name": {
+                        "description": "Nombre de la persona de contacto",
+                        "type": "string",
+                        "example": "Juan Pérez",
+                        "nullable": true
+                    },
+                    "phone": {
+                        "description": "Teléfono de contacto",
+                        "type": "string",
+                        "example": "555-1234",
+                        "nullable": true
+                    },
+                    "email": {
+                        "description": "Correo electrónico de contacto",
+                        "type": "string",
+                        "example": "contacto@avicola.com",
+                        "nullable": true
+                    },
+                    "address": {
+                        "description": "Dirección física o fiscal",
+                        "type": "string",
+                        "example": "Av. Industrial 456",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "description": "Estado activo/inactivo (baja lógica)",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "delivery_days": {
+                        "description": "Días habituales de entrega",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeliveryDayResource"
+                        }
+                    },
+                    "supplies": {
+                        "description": "Insumos que abastece con precio acordado",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SupplierSupplyResource"
+                        }
+                    },
+                    "purchase_orders_count": {
+                        "description": "Cantidad de compras/entregas registradas",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "delivery_incidents_count": {
+                        "description": "Cantidad de incidencias registradas",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "performance": {
+                        "description": "Métricas de desempeño y cumplimiento del proveedor",
+                        "properties": {
+                            "total_orders": {
+                                "type": "integer",
+                                "example": 12
+                            },
+                            "completed_orders": {
+                                "type": "integer",
+                                "example": 11
+                            },
+                            "incident_orders": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "total_incidents": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "compliance_rate": {
+                                "type": "number",
+                                "example": 91.67
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "purchase_orders": {
+                        "description": "Historial de compras y entregas",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PurchaseOrderResource"
+                        }
+                    },
+                    "delivery_incidents": {
+                        "description": "Historial de incidencias registradas",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeliveryIncidentResource"
+                        }
+                    },
+                    "created_at": {
+                        "description": "Fecha de creación",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    },
+                    "updated_at": {
+                        "description": "Fecha de última actualización",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-07T12:00:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "SupplierSupplyResource": {
+                "title": "Supplier Supply Resource",
+                "description": "Insumo provisto por el proveedor con precio acordado",
+                "properties": {
+                    "id": {
+                        "description": "ID del registro de insumo del proveedor",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "supply_id": {
+                        "description": "ID del insumo en catálogo",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "name": {
+                        "description": "Nombre del insumo",
+                        "type": "string",
+                        "example": "Pechuga de Pollo Fresca"
+                    },
+                    "code": {
+                        "description": "Código del insumo",
+                        "type": "string",
+                        "example": "INS-0001"
+                    },
+                    "measurement_unit": {
+                        "description": "Unidad de medida",
+                        "type": "string",
+                        "example": "Kilogramos"
+                    },
+                    "agreed_price": {
+                        "description": "Precio acordado por unidad",
+                        "type": "number",
+                        "example": 34.5
+                    },
+                    "unit_cost": {
+                        "description": "Costo unitario actual en catálogo",
+                        "type": "number",
+                        "example": 35
+                    }
+                },
+                "type": "object"
+            },
             "SupplyAlertResource": {
                 "title": "Supply Alert Resource",
                 "description": "Información completa de una alerta de reposición de insumo",
@@ -9705,6 +12573,19 @@
                     "purchase_request_id": {
                         "description": "ID de la solicitud de compra vinculada al atender (si aplica)",
                         "type": "integer",
+                        "nullable": true
+                    },
+                    "inventory_movement_id": {
+                        "description": "ID del movimiento de ajuste vinculado (si aplica)",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "inventory_movement": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/InventoryMovementResource"
+                            }
+                        ],
                         "nullable": true
                     },
                     "notes": {
@@ -9905,6 +12786,10 @@
             "description": "Menú del Día"
         },
         {
+            "name": "Gestión de Proveedores",
+            "description": "Gestión de Proveedores"
+        },
+        {
             "name": "Movimientos de Inventario",
             "description": "Movimientos de Inventario"
         },
@@ -9915,6 +12800,10 @@
         {
             "name": "Comandas y Pedidos",
             "description": "Comandas y Pedidos"
+        },
+        {
+            "name": "Compras y Abastecimiento",
+            "description": "Compras y Abastecimiento"
         },
         {
             "name": "Reportes",

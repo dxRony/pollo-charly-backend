@@ -4,19 +4,24 @@ use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\PingController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ComplementController;
 use App\Http\Controllers\DailyMenuController;
+use App\Http\Controllers\DeliveryCatalogController;
+use App\Http\Controllers\DeliveryIncidentController;
 use App\Http\Controllers\DishController;
 use App\Http\Controllers\DishImageController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MeasurementUnitController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PingController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RestaurantTableController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplyAlertController;
 use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\UserController;
@@ -37,6 +42,7 @@ Route::prefix('2fa')->group(function () {
 
 Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::match(['put', 'patch'], '/me', [AuthController::class, 'updateProfile']);
     Route::put('/me/password', ChangePasswordController::class)->middleware('throttle:5,1');
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -90,11 +96,37 @@ Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
     Route::post('/sales', [SaleController::class, 'store']);
     Route::get('/sales/{id}', [SaleController::class, 'show']);
 
+    Route::get('/delivery-days', [DeliveryCatalogController::class, 'deliveryDays']);
+    Route::get('/delivery-incident-types', [DeliveryCatalogController::class, 'incidentTypes']);
+    Route::get('/delivery-incident-statuses', [DeliveryCatalogController::class, 'incidentStatuses']);
+    Route::get('/suppliers', [SupplierController::class, 'index']);
+    Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
+    Route::get('/suppliers/{id}/history', [SupplierController::class, 'history']);
+    Route::post('/suppliers/{id}/deliveries', [SupplierController::class, 'recordDelivery']);
+    Route::get('/delivery-incidents', [DeliveryIncidentController::class, 'index']);
+    Route::post('/delivery-incidents', [DeliveryIncidentController::class, 'store']);
+    Route::get('/delivery-incidents/{id}', [DeliveryIncidentController::class, 'show']);
+
+    Route::middleware('role:Administrador,Mesero/Cajero')->group(function () {
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);
+        Route::get('/purchase-orders/statuses', [PurchaseOrderController::class, 'statuses']);
+        Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
+        Route::post('/purchase-orders/{id}/receive', [PurchaseOrderController::class, 'receive']);
+        Route::post('/purchase-orders/{id}/incident', [PurchaseOrderController::class, 'reportIncident']);
+        Route::patch('/delivery-incidents/{id}/status', [DeliveryIncidentController::class, 'updateStatus']);
+    });
+
     Route::middleware('role:Administrador')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
         Route::apiResource('users', UserController::class);
         Route::patch('/users/{user}/status', [UserController::class, 'toggleStatus']);
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+
+        Route::post('/suppliers', [SupplierController::class, 'store']);
+        Route::put('/suppliers/{id}', [SupplierController::class, 'update']);
+        Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
+        Route::patch('/suppliers/{id}/status', [SupplierController::class, 'toggleStatus']);
+        Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
 
         Route::post('/uploads/dish-image', [DishImageController::class, 'store'])->middleware('throttle:20,1');
         Route::delete('/uploads/dish-image', [DishImageController::class, 'destroy'])->middleware('throttle:60,1');
@@ -120,6 +152,16 @@ Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
         Route::post('/inventory-movements/{id}/reject', [InventoryMovementController::class, 'rejectAdjustment']);
 
         Route::post('/supply-alerts/{id}/attend', [SupplyAlertController::class, 'attend']);
+
+        Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
+        Route::get('/purchase-requests/statuses', [PurchaseRequestController::class, 'statuses']);
+        Route::get('/purchase-requests/{id}', [PurchaseRequestController::class, 'show']);
+        Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
+        Route::post('/purchase-requests/{id}/approve', [PurchaseRequestController::class, 'approve']);
+        Route::post('/purchase-requests/{id}/reject', [PurchaseRequestController::class, 'reject']);
+
+        Route::post('/purchase-orders', [PurchaseOrderController::class, 'store']);
+        Route::post('/purchase-orders/{id}/cancel', [PurchaseOrderController::class, 'cancel']);
         Route::post('/restaurant-tables', [RestaurantTableController::class, 'store']);
         Route::put('/restaurant-tables/{id}', [RestaurantTableController::class, 'update']);
         Route::patch('/restaurant-tables/{id}', [RestaurantTableController::class, 'update']);
@@ -131,6 +173,7 @@ Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
         Route::get('/reports/top-dishes', [ReportController::class, 'topDishes']);
         Route::get('/reports/inventory-movements', [ReportController::class, 'inventoryMovements']);
         Route::get('/reports/supply-alerts', [ReportController::class, 'supplyAlerts']);
+        Route::get('/reports/inventory-waste', [ReportController::class, 'inventoryWaste']);
+        Route::get('/reports/supplier-purchases', [ReportController::class, 'supplierPurchases']);
     });
 });
-

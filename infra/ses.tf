@@ -3,20 +3,10 @@ locals {
   ses_identities   = toset(concat([local.ses_sender_email], var.ses_extra_recipients))
 }
 
+# Las identidades de SES se conservan aunque el proveedor activo sea SMTP: no cuestan nada y permiten
+# volver a SES cambiando solo `mail_provider`, sin repetir las verificaciones.
 resource "aws_sesv2_email_identity" "verified" {
   for_each = local.ses_identities
 
   email_identity = each.value
-}
-
-resource "aws_ssm_parameter" "mail_mailer" {
-  name  = "${local.ssm_prefix}/MAIL_MAILER"
-  type  = "String"
-  value = "ses"
-}
-
-resource "aws_ssm_parameter" "mail_from_address" {
-  name  = "${local.ssm_prefix}/MAIL_FROM_ADDRESS"
-  type  = "String"
-  value = local.ses_sender_email
 }

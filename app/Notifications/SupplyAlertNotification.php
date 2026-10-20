@@ -40,23 +40,49 @@ class SupplyAlertNotification extends Notification
         $generatorName = $this->alert->user?->name ?? 'Detección automática del sistema';
         $formattedDate = $this->alert->created_at?->format('d/m/Y H:i:s') ?? now()->format('d/m/Y H:i:s');
 
+        $isAdjustment = $this->alert->inventory_movement_id !== null;
+
+        if ($isAdjustment) {
+            $movement = $this->alert->inventoryMovement;
+            $unit = $supply?->measurementUnit?->abbreviation ?? '';
+
+            $mail = (new MailMessage)
+                ->subject('Solicitud de Ajuste de Inventario - Pollo Charly')
+                ->greeting('¡Hola, '.($notifiable->name ?? 'Administradora').'!')
+                ->line('Se ha registrado una nueva solicitud de ajuste manual de inventario pendiente de aprobación:')
+                ->line('**Insumo / Producto:** '.($supply?->name ?? 'N/A').' ('.($supply?->code ?? 'N/A').')')
+                ->line('**Fecha y hora:** '.$formattedDate)
+                ->line('**Usuario que generó el ajuste:** '.$generatorName);
+
+            if ($movement) {
+                $mail->line('**Existencia previa:** '.$movement->previous_stock.' '.$unit)
+                    ->line('**Nueva existencia solicitada:** '.$movement->new_stock.' '.$unit)
+                    ->line('**Motivo del ajuste:** '.($movement->reason ?? 'Sin motivo'));
+            } elseif (! empty($this->alert->notes)) {
+                $mail->line('**Motivo / Detalle:** '.$this->alert->notes);
+            }
+
+            return $mail->line('Por favor revisa el módulo de movimientos o alertas para aprobar o rechazar este ajuste.')
+                ->salutation('Atentamente, el sistema de Pollo Charly.');
+        }
+
         $mail = (new MailMessage)
             ->subject('Alerta de Reposición de Insumo - Pollo Charly')
-            ->greeting('¡Hola, ' . ($notifiable->name ?? 'Administradora') . '!')
+            ->greeting('¡Hola, '.($notifiable->name ?? 'Administradora').'!')
             ->line('Se ha registrado una nueva alerta de reposición para el siguiente insumo en el almacén:')
-            ->line('**Insumo:** ' . ($supply?->name ?? 'N/A') . ' (' . ($supply?->code ?? 'N/A') . ')')
-            ->line('**Origen de la alerta:** ' . $originName)
-            ->line('**Fecha y hora:** ' . $formattedDate)
-            ->line('**Generada por:** ' . $generatorName);
+            ->line('**Insumo:** '.($supply?->name ?? 'N/A').' ('.($supply?->code ?? 'N/A').')')
+            ->line('**Origen de la alerta:** '.$originName)
+            ->line('**Fecha y hora:** '.$formattedDate)
+            ->line('**Generada por:** '.$generatorName);
 
         if ($supply) {
             $unit = $supply->measurementUnit?->abbreviation ?? '';
-            $mail->line('**Existencia actual:** ' . $supply->current_stock . ' ' . $unit)
-                ->line('**Cantidad de referencia mínima:** ' . $supply->minimum_stock . ' ' . $unit);
+            $mail->line('**Existencia actual:** '.$supply->current_stock.' '.$unit)
+                ->line('**Cantidad de referencia mínima:** '.$supply->minimum_stock.' '.$unit);
         }
 
         if (! empty($this->alert->notes)) {
-            $mail->line('**Observaciones:** ' . $this->alert->notes);
+            $mail->line('**Observaciones:** '.$this->alert->notes);
         }
 
         return $mail->line('Por favor revisa el módulo de inventario para gestionar la orden o solicitud de compra correspondiente.')
