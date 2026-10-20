@@ -101,6 +101,9 @@ resource "aws_elastic_beanstalk_environment" "api" {
   }
 
   lifecycle {
-    ignore_changes = [version_label]
+    # version_label lo cambia el despliegue desde GitHub Actions. solution_stack_name se ignora para que una
+    # versión nueva de la plataforma publicada por AWS no reemplace el servidor de producción en un
+    # `terraform apply` cualquiera: las actualizaciones de plataforma deben ser una decisión explícita.
+    ignore_changes = [version_label, solution_stack_name]
   }
 }
