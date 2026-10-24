@@ -27,7 +27,7 @@ class ReportController extends Controller
     #[OA\Get(
         path: '/api/reports/dashboard',
         operationId: 'getDashboardMetrics',
-        description: 'Obtiene los indicadores clave (KPIs), ventas por día y platillos más vendidos del periodo, para el panel de métricas del Administrador.',
+        description: 'Obtiene los indicadores clave (KPIs), ventas por día, ventas por método de pago y platillos más vendidos del periodo, para el panel de métricas del Administrador.',
         summary: 'Panel de métricas',
         security: [['bearerAuth' => []]],
         tags: ['Reportes'],
