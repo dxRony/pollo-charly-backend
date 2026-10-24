@@ -121,7 +121,10 @@ test('las alertas enlazan con la pantalla correspondiente', function () {
     ))->toMail($this->user);
 
     $adjustment = (new SupplyAlertNotification(
-        (new SupplyAlert)->forceFill(['inventory_movement_id' => 9])->setRelation('supply', $this->supply),
+        // Se fija la relación en null para que la prueba no consulte la base de datos.
+        (new SupplyAlert)->forceFill(['inventory_movement_id' => 9])
+            ->setRelation('supply', $this->supply)
+            ->setRelation('inventoryMovement', null),
     ))->toMail($this->user);
 
     expect(($this->html)($alert))
