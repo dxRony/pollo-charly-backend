@@ -450,10 +450,19 @@ WITH_SNAPSHOT=1 ./scripts/reset-database.sh    # deja la base limpia (solo el ad
 
 **Procedimiento en desarrollo:**
 
+Permite ver los cambios con información realista sin desplegar. **Borra todos los datos de la base local** (`migrate:fresh`) y
+conserva los usuarios de desarrollo habituales (`admin@pollocharly.com`, `mesero@pollocharly.com` y `cocinero@pollocharly.com`):
+
 ```bash
-php artisan migrate:fresh --seed --seeder=ProductionSeeder   # requiere INITIAL_ADMIN_EMAIL e INITIAL_ADMIN_PASSWORD
+php artisan migrate:fresh --force
+php artisan db:seed --class=RoleSeeder --force
+php artisan db:seed --class=UserSeeder --force
+php artisan db:seed --class=CatalogSeeder --force
 php artisan demo:seed --days=30
 ```
+
+Los datos se generan relativos a la fecha en que se cargan; para actualizarlos basta repetir el procedimiento. Quien prefiera
+conservar su base de desarrollo puede apuntar estos comandos a otra base con `DB_DATABASE=<otra_base>` (creada antes).
 
 La carga no envía correos ni emite eventos de tiempo real. La misma semilla (`--seed=2026`) produce siempre los mismos
 datos.

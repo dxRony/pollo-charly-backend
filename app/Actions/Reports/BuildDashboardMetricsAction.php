@@ -28,8 +28,8 @@ final class BuildDashboardMetricsAction
         $dateTo = $filters['date_to'] ?? Carbon::now()->toDateString();
 
         $salesQuery = Sale::query()
-            ->whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo);
+            ->whereDate('sales.created_at', '>=', $dateFrom)
+            ->whereDate('sales.created_at', '<=', $dateTo);
 
         $totalSales = (float) (clone $salesQuery)->sum('total');
         $salesCount = (clone $salesQuery)->count();
@@ -63,6 +63,22 @@ final class BuildDashboardMetricsAction
                 'count' => (int) $row->count,
             ]);
 
+        $salesByPaymentMethod = (clone $salesQuery)
+            ->join('payment_methods', 'sales.payment_method_id', '=', 'payment_methods.id')
+            ->select([
+                'payment_methods.name as payment_method',
+                DB::raw('SUM(sales.total) as total'),
+                DB::raw('COUNT(*) as count'),
+            ])
+            ->groupBy('payment_methods.name')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'payment_method' => (string) $row->payment_method,
+                'total' => round((float) $row->total, 2),
+                'count' => (int) $row->count,
+            ]);
+
         $topDishes = $this->buildTopDishes->handle([
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
@@ -81,6 +97,7 @@ final class BuildDashboardMetricsAction
                 'top_dish_name' => $topDishes->first()['dish_name'] ?? null,
             ],
             'sales_by_day' => $salesByDay,
+            'sales_by_payment_method' => $salesByPaymentMethod->values(),
             'top_dishes' => $topDishes->values(),
         ];
     }

@@ -37,31 +37,31 @@ class PurchaseOrderNotification extends Notification
     {
         $supplier = $this->order->supplier;
         $orderCode = $this->order->code;
-        $totalFormatted = number_format((float) $this->order->total, 2);
-        $expectedDate = $this->order->expected_date?->format('d/m/Y') ?? 'A convenir';
 
-        $mail = (new MailMessage)
+        $items = $this->order->items->map(fn ($item) => [
+            // La barra vertical separa columnas en la tabla Markdown.
+            'name' => str_replace('|', '/', (string) $item->supply?->name),
+            'quantity' => (float) $item->ordered_quantity.' '.($item->supply?->measurementUnit?->abbreviation ?? 'uds'),
+            'price' => $this->money($item->unit_price),
+            'subtotal' => $this->money($item->subtotal),
+        ])->all();
+
+        return (new MailMessage)
             ->subject("Orden de Compra {$orderCode} - Pollo Charly")
-            ->greeting('¡Estimado(a) ' . ($supplier?->contact_name ?? $supplier?->company_name ?? 'Proveedor') . '!')
-            ->line("Se ha generado una nueva orden de compra formal para **{$supplier?->company_name}**.")
-            ->line("**Código de orden:** {$orderCode}")
-            ->line("**Fecha prevista de entrega:** {$expectedDate}")
-            ->line("**Total de la compra:** \${$totalFormatted}");
+            ->markdown('mail.purchase-order', [
+                'contactName' => $supplier?->contact_name ?? $supplier?->company_name ?? 'Proveedor',
+                'companyName' => $supplier?->company_name,
+                'rows' => [
+                    ['label' => 'Código de orden', 'value' => $orderCode],
+                    ['label' => 'Fecha prevista de entrega', 'value' => $this->order->expected_date?->format('d/m/Y') ?? 'A convenir'],
+                    ['label' => 'Total de la compra', 'value' => $this->money($this->order->total)],
+                ],
+                'items' => $items,
+            ]);
+    }
 
-        $items = $this->order->items;
-        if ($items && $items->isNotEmpty()) {
-            $mail->line('---')
-                ->line('**Detalle de productos solicitados:**');
-            foreach ($items as $item) {
-                $qty = (float) $item->ordered_quantity;
-                $unit = $item->supply?->measurementUnit?->abbreviation ?? 'uds';
-                $price = number_format((float) $item->unit_price, 2);
-                $subtotal = number_format((float) $item->subtotal, 2);
-                $mail->line("- {$item->supply?->name}: {$qty} {$unit} a \${$price} = \${$subtotal}");
-            }
-        }
-
-        return $mail->line('Por favor confirme la recepción de esta orden y la fecha estimada de entrega.')
-            ->salutation('Atentamente, Pollo Charly.');
+    private function money(mixed $amount): string
+    {
+        return 'Q'.number_format((float) $amount, 2);
     }
 }
