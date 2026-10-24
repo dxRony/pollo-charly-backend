@@ -8,8 +8,8 @@ infraestructura.
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.0 |
-| Última revisión | 20 de octubre de 2026 |
+| Versión | 1.1 |
+| Última revisión | 22 de octubre de 2026 |
 | Alcance | API (Laravel) y frontend (React) desplegados en AWS, región `us-east-2` |
 | Audiencia | Personal técnico con conocimientos básicos de terminal y de AWS |
 
@@ -348,7 +348,8 @@ terraform apply
 - Cuando todo coincide, el plan indica `No changes`. **Si propone destruir o reemplazar un recurso (RDS, Beanstalk,
   CloudFront), no debe aplicarse** hasta analizar el motivo.
 - Las actualizaciones de la plataforma de Beanstalk están **ignoradas deliberadamente** (`ignore_changes`): AWS publica
-  versiones nuevas y un `apply` no debe reemplazar el servidor de forma inadvertida.
+  versiones nuevas y un `apply` no debe reemplazar el servidor de forma inadvertida. La plataforma se actualiza de forma
+  explícita, según la sección 7.8.
 
 ### 7.7 Rotación de las llaves de GitHub Actions
 
@@ -363,6 +364,52 @@ Un usuario IAM admite como máximo dos llaves simultáneas.
 
 **Estado: Documentado, no ejecutado como rotación completa.** La creación y eliminación de llaves de estos usuarios sí se
 realizó durante la puesta en marcha.
+
+### 7.8 Actualización de la plataforma de Beanstalk (PHP y sistema operativo)
+
+La versión de PHP, nginx y el sistema operativo dependen de la **plataforma** de Elastic Beanstalk. Terraform la ignora
+deliberadamente, por lo que las actualizaciones, incluidas las de seguridad, se aplican de forma manual y explícita.
+
+**Cuándo actualizar:**
+
+- Al publicarse una vulnerabilidad crítica en PHP o en el sistema operativo (por ejemplo, PHP2Shell, CVE-2026-109618 y
+  CVE-2026-109619, corregida en PHP 8.4.27).
+- De forma periódica (se recomienda una vez al mes), para recibir parches de seguridad menores.
+
+**Procedimiento:**
+
+```bash
+# 1. Versión actual y versiones disponibles
+aws elasticbeanstalk describe-environments --environment-names pollo-charly-prod-api \
+  --query 'Environments[0].SolutionStackName' --output text
+aws elasticbeanstalk list-platform-versions \
+  --filters 'Type=PlatformName,Operator=contains,Values=PHP 8.4 running on 64bit Amazon Linux 2023' \
+  --query 'sort_by(PlatformSummaryList,&PlatformVersion)[-3:].[PlatformVersion,PlatformStatus]' --output text
+
+# 2. Confirmar qué versión de PHP incluye la plataforma elegida (historial de plataformas de PHP de AWS):
+#    https://docs.aws.amazon.com/elasticbeanstalk/latest/platforms/platform-history-php.html
+
+# 3. Actualizar (reemplaza la instancia; interrupción de unos 3 a 5 minutos)
+aws elasticbeanstalk update-environment --environment-name pollo-charly-prod-api \
+  --solution-stack-name "64bit Amazon Linux 2023 v<versión> running PHP 8.4"
+aws elasticbeanstalk wait environment-updated --environment-names pollo-charly-prod-api
+
+# 4. Verificar
+./scripts/run-on-server.sh "php -v | head -1"
+./scripts/smoke-test.sh
+```
+
+**Consideraciones:**
+
+- Se recomienda realizarlo **fuera de horarios de uso** y no durante una demostración o prueba en curso.
+- La base de datos, los secretos, los respaldos y la versión de la aplicación **no se modifican**: los *hooks* regeneran el
+  `.env` y reinician el servicio `reverb` en la instancia nueva.
+- Tras la actualización, `terraform plan` debe indicar `No changes`.
+- Verificar además que el correo y la subida de imágenes sigan funcionando (sección 5, verificación manual).
+
+**Estado: Probado.** El 22 de octubre de 2026 se actualizó de la plataforma 4.13.9 (PHP 8.4.25) a la 4.13.13 (PHP 8.4.27).
+La actualización completó en unos 3 minutos; después se verificaron PHP 8.4.27, el estado de los servicios, las migraciones,
+la configuración cargada en la instancia nueva, la ausencia de errores y las comprobaciones de `smoke-test.sh`.
 
 ## 8. Respaldos y restauración
 
