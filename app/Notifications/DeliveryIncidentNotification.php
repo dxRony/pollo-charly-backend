@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\DeliveryIncident;
+use App\Notifications\Concerns\BuildsFrontendLinks;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class DeliveryIncidentNotification extends Notification
 {
+    use BuildsFrontendLinks;
     use Queueable;
 
     /**
@@ -36,26 +38,24 @@ class DeliveryIncidentNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $supplier = $this->incident->supplier;
-        $order = $this->incident->purchaseOrder;
-        $type = $this->incident->type?->name ?? 'No especificado';
-        $user = $this->incident->receivingUser?->name ?? 'Mesero/Cajero';
-        $orderCode = $order?->code ?? 'Entrega sin orden previa';
-
-        $mail = (new MailMessage)
-            ->subject("Alerta: Incidencia en Entrega de Proveedor - {$supplier?->company_name}")
-            ->greeting('¡Hola, '.($notifiable->name ?? 'Administradora').'!')
-            ->line('Se ha registrado una **recepción no conforme** durante la entrega de un pedido:')
-            ->line("**Proveedor:** {$supplier?->company_name}")
-            ->line("**Orden de Compra:** {$orderCode}")
-            ->line("**Tipo de Incidencia:** {$type}")
-            ->line("**Reportado por:** {$user}")
-            ->line("**Descripción:** {$this->incident->description}");
+        $rows = [
+            ['label' => 'Proveedor', 'value' => $supplier?->company_name ?? 'No especificado'],
+            ['label' => 'Orden de compra', 'value' => $this->incident->purchaseOrder?->code ?? 'Entrega sin orden previa'],
+            ['label' => 'Tipo de incidencia', 'value' => $this->incident->type?->name ?? 'No especificado'],
+            ['label' => 'Reportado por', 'value' => $this->incident->receivingUser?->name ?? 'Mesero/Cajero'],
+            ['label' => 'Descripción', 'value' => (string) $this->incident->description],
+        ];
 
         if ($this->incident->evidence_path) {
-            $mail->line("**Evidencia adjunta:** {$this->incident->evidence_path}");
+            $rows[] = ['label' => 'Evidencia adjunta', 'value' => $this->incident->evidence_path];
         }
 
-        return $mail->line('Por favor revisa el módulo de compras y proveedores para gestionar la corrección o reposición de productos con el proveedor.')
-            ->salutation('Atentamente, el sistema de Pollo Charly.');
+        return (new MailMessage)
+            ->subject("Alerta: Incidencia en Entrega de Proveedor - {$supplier?->company_name}")
+            ->markdown('mail.delivery-incident', [
+                'name' => $notifiable->name ?? 'Administradora',
+                'rows' => $rows,
+                'actionUrl' => $this->frontendUrl('/dashboard/purchases'),
+            ]);
     }
 }
