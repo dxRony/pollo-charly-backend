@@ -8,8 +8,8 @@ infraestructura.
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.1 |
-| Última revisión | 22 de octubre de 2026 |
+| Versión | 1.2 |
+| Última revisión | 24 de octubre de 2026 |
 | Alcance | API (Laravel) y frontend (React) desplegados en AWS, región `us-east-2` |
 | Audiencia | Personal técnico con conocimientos básicos de terminal y de AWS |
 
@@ -78,6 +78,9 @@ infraestructura.
 
 La configuración de nginx (rutas de Laravel, proxy del WebSocket y límite de subida de 5 MB) se encuentra en
 [`.platform/nginx/conf.d/elasticbeanstalk/`](../.platform/nginx/conf.d/elasticbeanstalk).
+
+**Zona horaria.** La aplicación usa `America/Guatemala` (UTC−6) por defecto, de modo que las fechas y horas de comandas,
+ventas y reportes son las locales del restaurante. Se puede cambiar con la variable `APP_TIMEZONE`.
 
 La infraestructura está definida con Terraform en [`infra/`](../infra). El estado de Terraform es **local** (ver
 sección 12).
@@ -410,6 +413,53 @@ aws elasticbeanstalk wait environment-updated --environment-names pollo-charly-p
 **Estado: Probado.** El 22 de octubre de 2026 se actualizó de la plataforma 4.13.9 (PHP 8.4.25) a la 4.13.13 (PHP 8.4.27).
 La actualización completó en unos 3 minutos; después se verificaron PHP 8.4.27, el estado de los servicios, las migraciones,
 la configuración cargada en la instancia nueva, la ausencia de errores y las comprobaciones de `smoke-test.sh`.
+
+### 7.9 Datos de demostración
+
+Permite llenar el sistema con **datos ficticios** para mostrar su funcionamiento con información realista (por ejemplo, en
+una presentación). Los datos se generan a través del propio API, con las reglas reales del sistema, por lo que el stock, los
+movimientos, las alertas y los reportes son coherentes entre sí.
+
+**Qué se carga** (con 30 días de historial, aproximadamente):
+
+- 18 insumos con stock inicial, 13 platillos con receta, 6 complementos, 8 mesas y 3 proveedores; menú del día publicado.
+- Unas 280 comandas que pasan por cocina y caja (con cancelaciones, descuentos y distintos métodos de pago), distribuidas
+  dentro del horario de atención y con más movimiento los fines de semana.
+- Consumo de insumos, alertas de stock bajo, solicitudes y órdenes de compra con sus recepciones (algunas con incidencia),
+  mermas y ajustes de inventario aprobados y rechazados.
+- Tareas pendientes para mostrar los flujos de aprobación: una solicitud de compra por aprobar, una orden de compra por
+  recibir, dos alertas de reposición y un ajuste de inventario por revisar.
+- Cuatro usuarios de demostración (2 meseros y 2 cocineros) con contraseñas aleatorias. **Las contraseñas se muestran una
+  sola vez al terminar** y no se guardan en ningún otro lugar.
+
+**Qué no incluye:** imágenes de platillos (deben subirse desde la pantalla de Platillos) ni comandas abiertas (las mesas
+quedan libres, para crear comandas en vivo durante la presentación).
+
+**Procedimiento en producción:**
+
+```bash
+WITH_SNAPSHOT=1 ./scripts/reset-database.sh    # deja la base limpia (solo el administrador inicial)
+./scripts/seed-demo-data.sh                     # solicita escribir CARGAR; tarda unos minutos
+```
+
+- `DAYS=14 ./scripts/seed-demo-data.sh` cambia los días de historial (de 1 a 90).
+- Si la base ya contiene datos, la carga se **rechaza** sin modificar nada.
+- Las contraseñas también quedan en el historial de Systems Manager, visible solo para usuarios IAM con acceso a la
+  instancia. Se invalidan al reiniciar la base de datos.
+- **Para retirar la demostración**, se ejecuta de nuevo `./scripts/reset-database.sh`.
+
+**Procedimiento en desarrollo:**
+
+```bash
+php artisan migrate:fresh --seed --seeder=ProductionSeeder   # requiere INITIAL_ADMIN_EMAIL e INITIAL_ADMIN_PASSWORD
+php artisan demo:seed --days=30
+```
+
+La carga no envía correos ni emite eventos de tiempo real. La misma semilla (`--seed=2026`) produce siempre los mismos
+datos.
+
+**Estado: Probado** en desarrollo y con pruebas automatizadas (coherencia del inventario, de las ventas y de las fechas).
+**Documentado, no ejecutado en producción.**
 
 ## 8. Respaldos y restauración
 
