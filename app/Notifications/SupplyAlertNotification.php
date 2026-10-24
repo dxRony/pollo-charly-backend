@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\SupplyAlert;
+use App\Notifications\Concerns\BuildsFrontendLinks;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class SupplyAlertNotification extends Notification
 {
+    use BuildsFrontendLinks;
     use Queueable;
 
     /**
@@ -36,56 +38,72 @@ class SupplyAlertNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $supply = $this->alert->supply;
-        $originName = $this->alert->origin?->name === 'automatic' ? 'Automática' : 'Manual';
         $generatorName = $this->alert->user?->name ?? 'Detección automática del sistema';
         $formattedDate = $this->alert->created_at?->format('d/m/Y H:i:s') ?? now()->format('d/m/Y H:i:s');
+        $unit = $supply?->measurementUnit?->abbreviation ?? '';
+        $supplyLabel = ($supply?->name ?? 'N/A').' ('.($supply?->code ?? 'N/A').')';
 
-        $isAdjustment = $this->alert->inventory_movement_id !== null;
-
-        if ($isAdjustment) {
-            $movement = $this->alert->inventoryMovement;
-            $unit = $supply?->measurementUnit?->abbreviation ?? '';
-
-            $mail = (new MailMessage)
-                ->subject('Solicitud de Ajuste de Inventario - Pollo Charly')
-                ->greeting('¡Hola, '.($notifiable->name ?? 'Administradora').'!')
-                ->line('Se ha registrado una nueva solicitud de ajuste manual de inventario pendiente de aprobación:')
-                ->line('**Insumo / Producto:** '.($supply?->name ?? 'N/A').' ('.($supply?->code ?? 'N/A').')')
-                ->line('**Fecha y hora:** '.$formattedDate)
-                ->line('**Usuario que generó el ajuste:** '.$generatorName);
-
-            if ($movement) {
-                $mail->line('**Existencia previa:** '.$movement->previous_stock.' '.$unit)
-                    ->line('**Nueva existencia solicitada:** '.$movement->new_stock.' '.$unit)
-                    ->line('**Motivo del ajuste:** '.($movement->reason ?? 'Sin motivo'));
-            } elseif (! empty($this->alert->notes)) {
-                $mail->line('**Motivo / Detalle:** '.$this->alert->notes);
-            }
-
-            return $mail->line('Por favor revisa el módulo de movimientos o alertas para aprobar o rechazar este ajuste.')
-                ->salutation('Atentamente, el sistema de Pollo Charly.');
+        if ($this->alert->inventory_movement_id !== null) {
+            return $this->adjustmentMail($notifiable, $supplyLabel, $generatorName, $formattedDate, $unit);
         }
 
-        $mail = (new MailMessage)
-            ->subject('Alerta de Reposición de Insumo - Pollo Charly')
-            ->greeting('¡Hola, '.($notifiable->name ?? 'Administradora').'!')
-            ->line('Se ha registrado una nueva alerta de reposición para el siguiente insumo en el almacén:')
-            ->line('**Insumo:** '.($supply?->name ?? 'N/A').' ('.($supply?->code ?? 'N/A').')')
-            ->line('**Origen de la alerta:** '.$originName)
-            ->line('**Fecha y hora:** '.$formattedDate)
-            ->line('**Generada por:** '.$generatorName);
+        $originName = $this->alert->origin?->name === 'automatic' ? 'Automática' : 'Manual';
+
+        $rows = [
+            ['label' => 'Insumo', 'value' => $supplyLabel],
+            ['label' => 'Origen de la alerta', 'value' => $originName],
+            ['label' => 'Fecha y hora', 'value' => $formattedDate],
+            ['label' => 'Generada por', 'value' => $generatorName],
+        ];
 
         if ($supply) {
-            $unit = $supply->measurementUnit?->abbreviation ?? '';
-            $mail->line('**Existencia actual:** '.$supply->current_stock.' '.$unit)
-                ->line('**Cantidad de referencia mínima:** '.$supply->minimum_stock.' '.$unit);
+            $rows[] = ['label' => 'Existencia actual', 'value' => trim($supply->current_stock.' '.$unit)];
+            $rows[] = ['label' => 'Cantidad mínima de referencia', 'value' => trim($supply->minimum_stock.' '.$unit)];
         }
 
         if (! empty($this->alert->notes)) {
-            $mail->line('**Observaciones:** '.$this->alert->notes);
+            $rows[] = ['label' => 'Observaciones', 'value' => $this->alert->notes];
         }
 
-        return $mail->line('Por favor revisa el módulo de inventario para gestionar la orden o solicitud de compra correspondiente.')
-            ->salutation('Atentamente, el sistema de Pollo Charly.');
+        return (new MailMessage)
+            ->subject('Alerta de Reposición de Insumo - Pollo Charly')
+            ->markdown('mail.supply-alert', [
+                'name' => $notifiable->name ?? 'Administradora',
+                'intro' => 'Se registró una nueva alerta de reposición para el siguiente insumo en el almacén:',
+                'rows' => $rows,
+                'actionText' => 'Revisar alertas de reposición',
+                'actionUrl' => $this->frontendUrl('/dashboard/supply-alerts'),
+                'closing' => 'Por favor revisa el módulo de inventario para gestionar la orden o solicitud de compra correspondiente.',
+            ]);
+    }
+
+    private function adjustmentMail(object $notifiable, string $supplyLabel, string $generatorName, string $formattedDate, string $unit): MailMessage
+    {
+        $movement = $this->alert->inventoryMovement;
+
+        $rows = [
+            ['label' => 'Insumo / Producto', 'value' => $supplyLabel],
+            ['label' => 'Fecha y hora', 'value' => $formattedDate],
+            ['label' => 'Usuario que generó el ajuste', 'value' => $generatorName],
+        ];
+
+        if ($movement) {
+            $rows[] = ['label' => 'Existencia previa', 'value' => trim($movement->previous_stock.' '.$unit)];
+            $rows[] = ['label' => 'Nueva existencia solicitada', 'value' => trim($movement->new_stock.' '.$unit)];
+            $rows[] = ['label' => 'Motivo del ajuste', 'value' => $movement->reason ?? 'Sin motivo'];
+        } elseif (! empty($this->alert->notes)) {
+            $rows[] = ['label' => 'Motivo / Detalle', 'value' => $this->alert->notes];
+        }
+
+        return (new MailMessage)
+            ->subject('Solicitud de Ajuste de Inventario - Pollo Charly')
+            ->markdown('mail.supply-alert', [
+                'name' => $notifiable->name ?? 'Administradora',
+                'intro' => 'Se registró una nueva solicitud de ajuste manual de inventario pendiente de aprobación:',
+                'rows' => $rows,
+                'actionText' => 'Revisar ajuste de inventario',
+                'actionUrl' => $this->frontendUrl('/dashboard/inventory-movements'),
+                'closing' => 'Por favor revisa el módulo de movimientos o alertas para aprobar o rechazar este ajuste.',
+            ]);
     }
 }
