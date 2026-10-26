@@ -74,25 +74,39 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_security_group" "web" {
   name        = "${local.name}-sg-web"
   description = "Entrada HTTP y HTTPS hacia la instancia de la API"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  # La instancia solo debe recibir tráfico de CloudFront (la API y el WebSocket se publican por su dominio).
+  # La lista de prefijos administrada por AWS se actualiza sola cuando CloudFront cambia de direcciones.
+  # La descripción del grupo no se modifica porque AWS no permite cambiarla sin reemplazar el grupo.
+  dynamic "ingress" {
+    for_each = var.restrict_origin_to_cloudfront ? [1] : []
+    content {
+      description     = "HTTP solo desde CloudFront"
+      from_port       = 80
+      to_port         = 80
+      protocol        = "tcp"
+      prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+    }
   }
 
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  # Entrada abierta anterior: solo se usa si restrict_origin_to_cloudfront = false (reversa rápida).
+  dynamic "ingress" {
+    for_each = var.restrict_origin_to_cloudfront ? [] : [80, 443]
+    content {
+      description = "Entrada abierta (puerto ${ingress.value})"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
 
   egress {

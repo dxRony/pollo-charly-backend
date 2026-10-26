@@ -132,3 +132,21 @@ variable "db_skip_final_snapshot" {
   type        = bool
   default     = true
 }
+
+variable "restrict_origin_to_cloudfront" {
+  description = "Si es true, la instancia de la API solo acepta tráfico HTTP desde CloudFront. Poner en false revierte a la entrada abierta (80 y 443 desde cualquier origen)."
+  type        = bool
+  default     = true
+}
+
+variable "team_members" {
+  description = "Integrantes del equipo que reciben su propio usuario IAM de operación (mínimo privilegio, MFA obligatorio)."
+  type        = set(string)
+  default     = ["julian", "rony"]
+}
+
+variable "alert_email" {
+  description = "Correo que recibe las alarmas de CloudWatch. Si es null, las alarmas se crean sin notificación por correo."
+  type        = string
+  default     = null
+}
