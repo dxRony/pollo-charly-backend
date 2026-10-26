@@ -57,6 +57,34 @@ resource "aws_cloudfront_function" "spa_rewrite" {
   EOT
 }
 
+resource "aws_cloudfront_response_headers_policy" "security" {
+  name    = "${local.name}-security-headers"
+  comment = "HSTS y cabeceras básicas de seguridad para el sitio"
+
+  security_headers_config {
+    strict_transport_security {
+      access_control_max_age_sec = 15552000 # 180 días
+      include_subdomains         = false
+      preload                    = false
+      override                   = true
+    }
+
+    content_type_options {
+      override = true
+    }
+
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "main" {
   enabled             = true
   comment             = "${local.name}: frontend y API"
@@ -86,12 +114,13 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   default_cache_behavior {
-    target_origin_id       = "frontend-s3"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
-    compress               = true
+    target_origin_id           = "frontend-s3"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    compress                   = true
 
     function_association {
       event_type   = "viewer-request"
