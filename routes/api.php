@@ -31,9 +31,9 @@ Route::get('/ping', PingController::class);
 
 Route::get('/daily-menu', [DailyMenuController::class, 'index']);
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword']);
-Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:password-recovery');
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:password-reset');
 
 Route::prefix('2fa')->group(function () {
     Route::post('/verify', [TwoFactorController::class, 'verify']);
