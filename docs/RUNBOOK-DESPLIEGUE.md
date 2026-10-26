@@ -8,7 +8,7 @@ infraestructura.
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.3 |
+| Versión | 1.4 |
 | Última revisión | 25 de octubre de 2026 |
 | Alcance | API (Laravel) y frontend (React) desplegados en AWS, región `us-east-2` |
 | Audiencia | Personal técnico con conocimientos básicos de terminal y de AWS |
@@ -242,7 +242,7 @@ cualquier cambio de importancia:
 - [ ] Subir la imagen de un platillo de **más de 1 MB** (valida el límite de nginx).
 - [ ] Crear un usuario con un correo real: debe recibirse el correo con la contraseña temporal.
 - [ ] Con dos usuarios (mesero y cocinero): una comanda nueva debe aparecer en Cocina **sin recargar la página**.
-- [ ] La dirección directa de Beanstalk (`<entorno>.us-east-2.elasticbeanstalk.com`) **no responde**: el único acceso es la URL de CloudFront.
+- [ ] La dirección directa de Beanstalk (`<entorno>.us-east-2.elasticbeanstalk.com`) **no responde** (`000`): el único acceso es la URL de CloudFront. Si responde, ver la nota del grupo creado por Beanstalk en la sección 7.6.
 
 ## 6. Reversa (rollback)
 
@@ -383,6 +383,22 @@ terraform apply
   CloudFront (`com.amazonaws.global.cloudfront.origin-facing`), por lo que la dirección directa de Beanstalk no responde.
   Durante el `apply` la entrada puede interrumpirse unos segundos. **Reversa inmediata:**
   `terraform apply -var restrict_origin_to_cloudfront=false` restablece la entrada abierta anterior.
+- **Grupo de seguridad creado por Beanstalk.** En los entornos de instancia única, Beanstalk crea además su propio grupo
+  (`awseb-e-…-AWSEBSecurityGroup`) con el puerto 80 abierto a `0.0.0.0/0`. Lo administra CloudFormation y **Terraform no
+  lo ve**, de modo que la dirección directa de Beanstalk sigue respondiendo hasta quitar esa regla a mano:
+
+  ```bash
+  SG=$(aws ec2 describe-security-groups --region us-east-2 \
+    --filters Name=group-name,Values='awseb-*AWSEBSecurityGroup*' --query 'SecurityGroups[0].GroupId' --output text)
+  aws ec2 revoke-security-group-ingress --region us-east-2 --group-id "$SG" --protocol tcp --port 80 --cidr 0.0.0.0/0
+  # Reversa:  aws ec2 authorize-security-group-ingress --region us-east-2 --group-id "$SG" --protocol tcp --port 80 --cidr 0.0.0.0/0
+  ```
+
+  El ajuste **no es permanente**: una actualización de la plataforma o la recreación del entorno (secciones 7.8 y 11) puede
+  restablecer la regla. Tras cualquiera de ellas, repetir el comando y comprobar que
+  `curl -m 8 http://<entorno>.us-east-2.elasticbeanstalk.com/api/ping` no obtiene respuesta (código `000`).
+
+  **Estado: Probado el efecto de la regla** (la dirección directa respondía 200 con ese grupo abierto).
 - **Cabeceras de seguridad.** CloudFront añade HSTS (180 días, sin subdominios), `X-Content-Type-Options`, `X-Frame-Options`
   y `Referrer-Policy` a las respuestas del sitio (`aws_cloudfront_response_headers_policy.security`). La actualización de
   la distribución tarda entre 5 y 10 minutos y no interrumpe el servicio.
@@ -509,26 +525,45 @@ Cada integrante tiene su **propio usuario IAM** (`pollo-charly-prod-julian` y `p
 `infra/iam_team.tf`, con una política propia: permisos de consulta (`ViewOnlyAccess`) y unas pocas operaciones acotadas
 (crear *snapshots* manuales de la base de datos, reiniciar el servidor de aplicación de Beanstalk y obtener los registros
 del entorno). **Sin un dispositivo MFA activo no pueden hacer nada** salvo configurarlo. El usuario `julian-admin`
-(*AdministratorAccess*) se conserva solo para situaciones excepcionales; el trabajo diario se realiza con el usuario
-personal. Los usuarios operan por consola; no se crean llaves de acceso para ellos.
+(*AdministratorAccess*) se conserva solo para situaciones excepcionales.
 
-**Alta de un integrante.**
+**Limitación de la cuenta: sin acceso por consola.** La política de la organización del plan gratuito niega
+`iam:CreateLoginProfile` y `iam:UpdateLoginProfile` (*explicit deny*), por lo que **ningún usuario IAM puede tener
+contraseña de consola**; tampoco puede usarse IAM Identity Center sin convertir el plan a de pago. Estos usuarios solo
+pueden operar por **CLI con llaves de acceso y MFA**. Las llaves son credenciales de larga duración: **no se crean hasta
+que una persona las necesite** (sin llaves, el usuario no puede hacer nada y no representa riesgo).
 
-1. Agregar su nombre a `team_members` (por defecto `julian` y `rony`) y ejecutar `terraform apply`.
-2. Crear su contraseña temporal de consola (se le exigirá cambiarla al ingresar) y entregársela por un canal privado:
+**Uso por CLI (solo cuando haga falta).**
+
+1. El administrador crea la llave del integrante y se la entrega por un canal privado; el secreto se muestra una sola vez:
 
    ```bash
-   read -rs -p "Contraseña temporal: " TEMP_PASS; echo
-   aws iam create-login-profile --user-name pollo-charly-prod-rony --password "$TEMP_PASS" --password-reset-required
-   unset TEMP_PASS
+   aws iam create-access-key --user-name pollo-charly-prod-rony
    ```
 
-3. En el primer ingreso (`https://<ID de la cuenta>.signin.aws.amazon.com/console`), la persona cambia la contraseña,
-   abre **IAM → Credenciales de seguridad → Asignar dispositivo MFA**, cierra la sesión y vuelve a entrar con el código MFA.
+   La persona la guarda en un perfil de `~/.aws/credentials` (nunca en el chat ni en el repositorio).
+2. La persona registra su MFA virtual (la política lo permite aun sin MFA) y lo activa con dos códigos consecutivos:
 
-**Baja.** Quitar el nombre de `team_members` y ejecutar `terraform apply`: se eliminan el usuario, su contraseña y su MFA.
+   ```bash
+   aws iam create-virtual-mfa-device --virtual-mfa-device-name pollo-charly-prod-rony \
+     --outfile mfa-qr.png --bootstrap-method QRCodePNG        # escanear con una app TOTP y borrar mfa-qr.png
+   aws iam enable-mfa-device --user-name pollo-charly-prod-rony \
+     --serial-number arn:aws:iam::<ID de la cuenta>:mfa/pollo-charly-prod-rony \
+     --authentication-code1 <código 1> --authentication-code2 <código 2>
+   ```
 
-**Estado: Documentado, no ejecutado** (se aplica con el cambio de infraestructura).
+3. En cada sesión de trabajo se obtienen credenciales temporales con MFA, que son las únicas con permisos efectivos:
+
+   ```bash
+   aws sts get-session-token --serial-number arn:aws:iam::<ID de la cuenta>:mfa/pollo-charly-prod-rony \
+     --token-code <código actual> --duration-seconds 43200
+   ```
+
+**Baja.** Quitar el nombre de `team_members` y ejecutar `terraform apply`: se elimina el usuario junto con sus llaves y su MFA.
+
+**Estado: Documentado, no ejecutado.** Los usuarios y sus políticas están aplicados y las políticas se validaron con el
+simulador de IAM (con y sin MFA). El registro del MFA virtual por CLI puede estar restringido por la organización: si
+`create-virtual-mfa-device` se rechaza, el usuario permanece sin uso (sin llaves) y se conserva `julian-admin` para operar.
 
 ## 8. Respaldos y restauración
 
@@ -647,7 +682,7 @@ Incidentes ocurridos durante la puesta en marcha, con su causa y resolución.
 | `terraform plan` propone actualizar Beanstalk o reemplazar recursos | Deriva de configuración o versión nueva de plataforma | No aplicar. Analizar el plan; la plataforma se ignora deliberadamente |
 | Un usuario ve **«Demasiados intentos. Espera un minuto…»** (HTTP 429) | Límite de intentos por correo: inicio de sesión 5 por minuto, recuperación de contraseña 3 y restablecimiento 5 | No es una falla: esperar un minuto. El límite es por correo y no por IP, porque detrás de CloudFront todas las peticiones llegan con la IP de CloudFront |
 | Un usuario ve **«Tu sesión expiró»** | Los tokens vencen a las 12 horas (`SANCTUM_TOKEN_EXPIRATION_MINUTES`, 720 por defecto) | Iniciar sesión nuevamente |
-| La dirección directa de Beanstalk (`…elasticbeanstalk.com`) no responde | `SG-web` solo acepta tráfico de CloudFront | Comportamiento esperado: usar la URL de CloudFront. Para depurar la instancia, `./scripts/run-on-server.sh` (SSM). Reversa: `terraform apply -var restrict_origin_to_cloudfront=false` |
+| La dirección directa de Beanstalk (`…elasticbeanstalk.com`) no responde | `SG-web` solo acepta tráfico de CloudFront | Comportamiento esperado: usar la URL de CloudFront. Para depurar la instancia, `./scripts/run-on-server.sh` (SSM). Reversa: `terraform apply -var restrict_origin_to_cloudfront=false` y la reversa de la sección 7.6 (grupo de Beanstalk). Si en cambio **sí responde**, la regla del grupo `awseb-…` volvió a abrirse (sección 7.6) |
 | Tras reiniciar la base de datos todos los usuarios pierden la sesión | Los tokens se eliminan junto con los datos | Comportamiento esperado: se debe iniciar sesión nuevamente |
 
 Verificación de que la contraseña del correo está cargada, sin mostrarla:
@@ -707,6 +742,8 @@ Restricciones y decisiones que explican la arquitectura actual:
 | Tramo CloudFront → instancia por HTTP | Con una instancia única y sin dominio propio no se puede emitir un certificado para el origen | El tramo es interno de AWS y la instancia solo acepta tráfico de CloudFront (`SG-web`) |
 | Conexión de la API a RDS sin TLS obligatorio | Exigirlo requiere un grupo de parámetros propio y reiniciar la base de datos | Mitigado: subred privada sin ruta a internet y `SG-db` limitado a `SG-web`. Mejora futura |
 | Sesiones de 12 horas, sin renovación automática | Simplicidad del esquema de tokens | Pasadas 12 horas el usuario debe iniciar sesión de nuevo (la pantalla lo indica) |
+| Los usuarios IAM no pueden tener acceso por consola | La política de la organización del plan gratuito niega `iam:CreateLoginProfile` | Operan por CLI con llaves y MFA, solo cuando es necesario (sección 7.10) |
+| La regla abierta del grupo de seguridad que crea Beanstalk se cierra a mano | Lo administra CloudFormation, no Terraform | Repetir el ajuste de la sección 7.6 tras actualizar la plataforma o recrear el entorno |
 | Métricas de CloudFront y de Beanstalk no disponibles en CloudWatch | CloudFront publica en `us-east-1` (región no permitida) y Beanstalk usa salud *basic* | La disponibilidad se verifica con `scripts/smoke-test.sh` |
 
 ## 13. Desmontaje al finalizar el proyecto
