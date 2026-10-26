@@ -48,9 +48,11 @@ return [
     | considered expired. This will override any values set in the token's
     | "expires_at" attribute, but first-party sessions are not affected.
     |
+    | Pollo Charly: 720 minutos (12 horas), que cubren un turno completo del restaurante.
+    |
     */
 
-    'expiration' => null,
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION_MINUTES', 720),
 
     /*
     |--------------------------------------------------------------------------

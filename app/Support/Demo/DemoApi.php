@@ -70,10 +70,18 @@ final class DemoApi
         // Los guards recuerdan al último usuario autenticado: se reinician para que cada petición use su propio token.
         app('auth')->forgetGuards();
 
-        $response = $this->kernel->handle($request);
-        $status = $response->getStatusCode();
-        $decoded = json_decode((string) $response->getContent(), true);
-        $this->kernel->terminate($request, $response);
+        // El reloj simulado avanza día a día: los tokens temporales de la carga no deben vencer por la vigencia de sesión.
+        $expiration = config('sanctum.expiration');
+        config(['sanctum.expiration' => null]);
+
+        try {
+            $response = $this->kernel->handle($request);
+            $status = $response->getStatusCode();
+            $decoded = json_decode((string) $response->getContent(), true);
+            $this->kernel->terminate($request, $response);
+        } finally {
+            config(['sanctum.expiration' => $expiration]);
+        }
 
         return [$status, is_array($decoded) ? $decoded : []];
     }
