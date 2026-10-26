@@ -8,8 +8,8 @@ infraestructura.
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.2 |
-| Última revisión | 24 de octubre de 2026 |
+| Versión | 1.3 |
+| Última revisión | 25 de octubre de 2026 |
 | Alcance | API (Laravel) y frontend (React) desplegados en AWS, región `us-east-2` |
 | Audiencia | Personal técnico con conocimientos básicos de terminal y de AWS |
 
@@ -103,6 +103,8 @@ Verificación del acceso:
 aws sts get-caller-identity --query Arn --output text   # debe mostrar un usuario IAM, no el usuario raíz
 aws configure get region                                  # debe ser us-east-2
 ```
+
+Cada integrante opera con su **propio usuario IAM** (sección 7.10) y MFA; `julian-admin` queda para casos excepcionales.
 
 ### Archivos fuera del control de versiones
 
@@ -207,6 +209,29 @@ aws elasticbeanstalk describe-environments --environment-names pollo-charly-prod
   --query 'Environments[0].[VersionLabel,Health,Status]' --output text                                                                      # versión nueva · Green · Ready
 ```
 
+### Monitoreo
+
+La arquitectura es de una sola instancia y no incluye balanceador, por lo que la vigilancia se apoya en comprobaciones
+periódicas sencillas. Beanstalk con salud *basic* no publica métricas en CloudWatch y las métricas de CloudFront residen en
+`us-east-1` (región no permitida en esta cuenta), de modo que la disponibilidad de la API se verifica con el *smoke test*.
+
+| Qué se vigila | Cómo | Cuándo | Valor normal | Si es anormal |
+|---|---|---|---|---|
+| Disponibilidad pública (sitio, API, WebSocket) | `./scripts/smoke-test.sh` | Tras cada despliegue y antes de cada demostración | 6 comprobaciones correctas | Sección 10 |
+| Salud del entorno de Beanstalk | `aws elasticbeanstalk describe-environments --environment-names pollo-charly-prod-api --query 'Environments[0].[Health,Status]' --output text` | Diario durante la evaluación | `Green  Ready` | Registros (7.1); reinicio del servidor de aplicación desde la consola de Beanstalk |
+| Integración y despliegue | Pestaña **Actions** de cada repositorio | En cada PR y despliegue | Ejecuciones en verde | Abrir el registro del paso que falló |
+| Respaldo semanal | Workflow *Respaldo semanal de la base de datos* y listado de snapshots (sección 8) | Cada domingo | Ejecución correcta y 4 snapshots `weekly-*` | Relanzar el workflow manualmente |
+| Base de datos: disco, CPU y memoria | Alarmas de `infra/monitoring.tf` (opcional) o la pestaña *Monitoring* de RDS en la consola | Semanal | Más de 4 GB libres; CPU menor al 80 %; más de 100 MB de memoria libre | Revisar consultas lentas y el crecimiento de las tablas; considerar aumentar el almacenamiento |
+| Créditos del plan gratuito | `aws freetier get-account-plan-state --region us-east-1` | Semanal | `accountPlanRemainingCredits` positivo y en descenso lento | Sección 9 |
+| Errores de la aplicación | `laravel.log` (sección 7.1) | Tras cualquier incidente | Sin errores nuevos | Sección 10 |
+
+**Alarmas de CloudWatch (opcional).** `infra/monitoring.tf` define tres alarmas sobre RDS (poco espacio libre, CPU alta y
+poca memoria). Para recibir un correo cuando se activen: agregar `alert_email = "<correo>"` en `infra/terraform.tfvars`,
+ejecutar `terraform apply` y **confirmar la suscripción** desde el mensaje que envía AWS. El plan gratuito incluye 10
+alarmas y el envío de correos por SNS.
+
+**Estado: Documentado, no ejecutado** (las alarmas se crean al aplicar el cambio de infraestructura).
+
 ### Verificación manual (con sesión de administrador)
 
 Estas comprobaciones requieren iniciar sesión y no pueden automatizarse sin credenciales. Se recomienda ejecutarlas tras
@@ -217,6 +242,7 @@ cualquier cambio de importancia:
 - [ ] Subir la imagen de un platillo de **más de 1 MB** (valida el límite de nginx).
 - [ ] Crear un usuario con un correo real: debe recibirse el correo con la contraseña temporal.
 - [ ] Con dos usuarios (mesero y cocinero): una comanda nueva debe aparecer en Cocina **sin recargar la página**.
+- [ ] La dirección directa de Beanstalk (`<entorno>.us-east-2.elasticbeanstalk.com`) **no responde**: el único acceso es la URL de CloudFront.
 
 ## 6. Reversa (rollback)
 
@@ -353,6 +379,13 @@ terraform apply
 - Las actualizaciones de la plataforma de Beanstalk están **ignoradas deliberadamente** (`ignore_changes`): AWS publica
   versiones nuevas y un `apply` no debe reemplazar el servidor de forma inadvertida. La plataforma se actualiza de forma
   explícita, según la sección 7.8.
+- **Entrada a la instancia.** El grupo `SG-web` solo acepta HTTP (puerto 80) desde la lista de prefijos administrada de
+  CloudFront (`com.amazonaws.global.cloudfront.origin-facing`), por lo que la dirección directa de Beanstalk no responde.
+  Durante el `apply` la entrada puede interrumpirse unos segundos. **Reversa inmediata:**
+  `terraform apply -var restrict_origin_to_cloudfront=false` restablece la entrada abierta anterior.
+- **Cabeceras de seguridad.** CloudFront añade HSTS (180 días, sin subdominios), `X-Content-Type-Options`, `X-Frame-Options`
+  y `Referrer-Policy` a las respuestas del sitio (`aws_cloudfront_response_headers_policy.security`). La actualización de
+  la distribución tarda entre 5 y 10 minutos y no interrumpe el servicio.
 
 ### 7.7 Rotación de las llaves de GitHub Actions
 
@@ -470,14 +503,46 @@ datos.
 **Estado: Probado** en desarrollo y con pruebas automatizadas (coherencia del inventario, de las ventas y de las fechas).
 **Documentado, no ejecutado en producción.**
 
+### 7.10 Accesos de los integrantes (IAM)
+
+Cada integrante tiene su **propio usuario IAM** (`pollo-charly-prod-julian` y `pollo-charly-prod-rony`), definido en
+`infra/iam_team.tf`, con una política propia: permisos de consulta (`ViewOnlyAccess`) y unas pocas operaciones acotadas
+(crear *snapshots* manuales de la base de datos, reiniciar el servidor de aplicación de Beanstalk y obtener los registros
+del entorno). **Sin un dispositivo MFA activo no pueden hacer nada** salvo configurarlo. El usuario `julian-admin`
+(*AdministratorAccess*) se conserva solo para situaciones excepcionales; el trabajo diario se realiza con el usuario
+personal. Los usuarios operan por consola; no se crean llaves de acceso para ellos.
+
+**Alta de un integrante.**
+
+1. Agregar su nombre a `team_members` (por defecto `julian` y `rony`) y ejecutar `terraform apply`.
+2. Crear su contraseña temporal de consola (se le exigirá cambiarla al ingresar) y entregársela por un canal privado:
+
+   ```bash
+   read -rs -p "Contraseña temporal: " TEMP_PASS; echo
+   aws iam create-login-profile --user-name pollo-charly-prod-rony --password "$TEMP_PASS" --password-reset-required
+   unset TEMP_PASS
+   ```
+
+3. En el primer ingreso (`https://<ID de la cuenta>.signin.aws.amazon.com/console`), la persona cambia la contraseña,
+   abre **IAM → Credenciales de seguridad → Asignar dispositivo MFA**, cierra la sesión y vuelve a entrar con el código MFA.
+
+**Baja.** Quitar el nombre de `team_members` y ejecutar `terraform apply`: se eliminan el usuario, su contraseña y su MFA.
+
+**Estado: Documentado, no ejecutado** (se aplica con el cambio de infraestructura).
+
 ## 8. Respaldos y restauración
 
 ### Respaldos existentes
 
-| Respaldo | Frecuencia | Retención | Mecanismo |
+| Capa | Mecanismo | Frecuencia | Retención |
 |---|---|---|---|
-| Automático de RDS (restauración a un punto en el tiempo) | Continuo y diario | **1 día** | RDS |
-| Snapshot completo semanal `weekly-AAAAMMDD-HHMM` | Domingos, 07:00 UTC | Los **4** más recientes | Workflow **Respaldo semanal de la base de datos** |
+| **Full Backup** | Snapshot manual completo `weekly-AAAAMMDD-HHMM`, creado por el workflow **Respaldo semanal de la base de datos** | Semanal (domingos, 07:00 UTC) | Los **4** más recientes |
+| **Incremental Backup** | Respaldo automático de RDS: *snapshot* de almacenamiento que solo guarda los bloques modificados desde el anterior (ventana 07:00–08:00 UTC) | Diario | **1 día** |
+| **Transactional Log Backup** | RDS envía de forma continua los logs de transacciones (aproximadamente cada 5 minutos); permite la **restauración a un punto específico en el tiempo** | Continuo | **1 día** |
+
+La restauración a un punto específico (*Point-in-Time Recovery*) cubre cualquier instante de las **últimas 24 horas**
+(`LatestRestorableTime` se mantiene a pocos minutos del momento actual). Para daños anteriores se recurre al snapshot
+semanal más cercano.
 
 > La retención automática es de un solo día porque la política de la cuenta del plan gratuito rechaza valores mayores. El
 > snapshot semanal compensa esa limitación y cubre los requisitos de respaldo del proyecto (RNF-07, RNF-08 y RNF-09).
@@ -580,6 +645,9 @@ Incidentes ocurridos durante la puesta en marcha, con su causa y resolución.
 | Error 500 en la aplicación | Error de PHP | Revisar `laravel.log` (sección 7.1) |
 | El sitio muestra una versión anterior | Caché de CloudFront o del navegador | Los archivos con huella digital se almacenan un año (comportamiento correcto); `index.html`, cinco minutos. Para invalidar: `aws cloudfront create-invalidation --distribution-id E23ZPGIBRO5LWC --paths "/*"` |
 | `terraform plan` propone actualizar Beanstalk o reemplazar recursos | Deriva de configuración o versión nueva de plataforma | No aplicar. Analizar el plan; la plataforma se ignora deliberadamente |
+| Un usuario ve **«Demasiados intentos. Espera un minuto…»** (HTTP 429) | Límite de intentos por correo: inicio de sesión 5 por minuto, recuperación de contraseña 3 y restablecimiento 5 | No es una falla: esperar un minuto. El límite es por correo y no por IP, porque detrás de CloudFront todas las peticiones llegan con la IP de CloudFront |
+| Un usuario ve **«Tu sesión expiró»** | Los tokens vencen a las 12 horas (`SANCTUM_TOKEN_EXPIRATION_MINUTES`, 720 por defecto) | Iniciar sesión nuevamente |
+| La dirección directa de Beanstalk (`…elasticbeanstalk.com`) no responde | `SG-web` solo acepta tráfico de CloudFront | Comportamiento esperado: usar la URL de CloudFront. Para depurar la instancia, `./scripts/run-on-server.sh` (SSM). Reversa: `terraform apply -var restrict_origin_to_cloudfront=false` |
 | Tras reiniciar la base de datos todos los usuarios pierden la sesión | Los tokens se eliminan junto con los datos | Comportamiento esperado: se debe iniciar sesión nuevamente |
 
 Verificación de que la contraseña del correo está cargada, sin mostrarla:
@@ -636,6 +704,10 @@ Restricciones y decisiones que explican la arquitectura actual:
 | Estado de Terraform local | Evita costo e infraestructura adicional | Debe respaldarse; lo opera una sola persona |
 | Correo por Gmail SMTP (aproximadamente 500 destinatarios por día) | SES en *sandbox* exige verificar cada destinatario | Suficiente para el proyecto; SES como alternativa |
 | Sin colas ni procesos en segundo plano | `QUEUE_CONNECTION=sync` | Los correos se envían dentro de la petición |
+| Tramo CloudFront → instancia por HTTP | Con una instancia única y sin dominio propio no se puede emitir un certificado para el origen | El tramo es interno de AWS y la instancia solo acepta tráfico de CloudFront (`SG-web`) |
+| Conexión de la API a RDS sin TLS obligatorio | Exigirlo requiere un grupo de parámetros propio y reiniciar la base de datos | Mitigado: subred privada sin ruta a internet y `SG-db` limitado a `SG-web`. Mejora futura |
+| Sesiones de 12 horas, sin renovación automática | Simplicidad del esquema de tokens | Pasadas 12 horas el usuario debe iniciar sesión de nuevo (la pantalla lo indica) |
+| Métricas de CloudFront y de Beanstalk no disponibles en CloudWatch | CloudFront publica en `us-east-1` (región no permitida) y Beanstalk usa salud *basic* | La disponibilidad se verifica con `scripts/smoke-test.sh` |
 
 ## 13. Desmontaje al finalizar el proyecto
 
